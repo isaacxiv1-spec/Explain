@@ -8899,13 +8899,13 @@ function RoClothes(Player)
 			}
 		},
 		["Cassie!"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["TorsoColor3"] = Color3.fromRGB(255, 255, 255),
+            ["Body Color"] = {
+                ["HeadColor3"] = Color3.fromRGB(255, 255, 255),
+                ["LeftArmColor3"] = Color3.fromRGB(255, 255, 255),
+                ["RightArmColor3"] = Color3.fromRGB(255, 255, 255),
+                ["LeftLegColor3"] = Color3.fromRGB(255, 255, 255),
+                ["RightLegColor3"] = Color3.fromRGB(255, 255, 255),
+                ["TorsoColor3"] = Color3.fromRGB(255, 255, 255),
 			},
 			["Accessory"] = {
 			    13243442326,
@@ -8916,7 +8916,8 @@ function RoClothes(Player)
 			    17332742362,
 			    16199987677,
 			    15632891267,
-			    72419375711851,   
+			    72419375711851,
+			},
 			["Clothes"] = {
 				["Shirt"] = 96180310027035,
 				["Pants"] = 122860181765464,
