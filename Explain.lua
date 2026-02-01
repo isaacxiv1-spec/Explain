@@ -1,7 +1,7 @@
 --[[	
 
 	/ ＲＯＣＬＯＴＨＥＳ
-	Version - 0.7.8:lerp()
+	Version - 0.7.9:lerp()
 	Mod's Discord - discord.gg/k2HbJMY6Fr
 	Unknowing's Discord - discord.gg/HBzvWE6Rp3
 	
@@ -22,7 +22,7 @@
 	
 	
 	original version 0.7
-	local version 0.7.8:lerp()
+	local version 0.7.9:lerp()
 		
 
 
@@ -84,9 +84,10 @@
 
 local PS = game:GetService("Players")
 local RS = game:GetService("RunService")
+local HS = game:GetService("HttpService")
 
 function RoClothes(Player)
-	print("custom roclothes build by arrymix")
+	print("RoCC")
 
 	--[[
 	--------------------------------------------------------------------------------------------------------------
@@ -446,6 +447,14 @@ function RoClothes(Player)
 	GUIObject.UICorner_A19 = Instance.new("UICorner")
 	GUIObject.HardcoreToggle = Instance.new("TextButton")
 
+	GUIObject.hardcoreUI = Instance.new("ScreenGui")
+	GUIObject.hardcoreGroup = Instance.new("CanvasGroup")
+	GUIObject.repairBar = Instance.new("ImageLabel")
+	GUIObject.repairDisplay = Instance.new("UIGradient")
+	GUIObject.topHPDisplay = Instance.new("TextLabel")
+	GUIObject.bottomHPDisplay = Instance.new("TextLabel")
+
+
 	GUIObject.HatButton = Instance.new("ImageButton")
 
 
@@ -457,6 +466,41 @@ function RoClothes(Player)
 	GUIObject.UICorner_A20 = Instance.new("UICorner")
 	GUIObject.tailToggleButton = Instance.new("TextButton")
 
+
+	GUIObject.optionsframeButton = Instance.new("ImageButton")
+	GUIObject.optionsButton = Instance.new("TextButton")
+	GUIObject.optionsFrame = Instance.new("Frame")
+	GUIObject.saveFrame = Instance.new("Frame")
+	GUIObject.saveButton = Instance.new("TextButton")
+	GUIObject.closeOption = Instance.new("Frame")
+	GUIObject.closeOptionButton = Instance.new("TextButton")
+	GUIObject.executeOption = Instance.new("Frame")
+	GUIObject.executeOptionButton = Instance.new("TextButton")
+	GUIObject.bundleLoad = Instance.new("Frame")
+	GUIObject.bundleLoadButton = Instance.new("TextButton")
+	GUIObject.FPersonLoadup = Instance.new("Frame")
+	GUIObject.FPersonLoadupButton = Instance.new("TextButton")
+	GUIObject.importBundle = Instance.new("Frame")
+	GUIObject.importBundleBox = Instance.new("TextBox")
+
+	GUIObject.HPListFrame = Instance.new("ScrollingFrame")
+
+	local env = {}
+	if RS:IsClient() and not RS:IsStudio() then
+		local function missing(t, f, fallback)
+			if type(f) == t then return f end
+			return fallback
+		end
+		env.readfile = missing("function", readfile)
+		env.loadfile = missing("function", loadfile)
+		env.writefile = missing("function", writefile)
+		env.delfile = missing("function", delfile)
+		env.listfiles = missing("function", listfiles)
+		env.isfile = missing("function", isfile)
+		env.makefolder = missing("function", makefolder)
+		env.isfolder = missing("function", isfolder)
+		env.gca = missing("function", getcustomasset)
+	end
 	-- variables --
 	local Mouse = Player:GetMouse()
 
@@ -472,29 +516,34 @@ function RoClothes(Player)
 	local TS = game:GetService("TweenService")
 	local MPS = game:GetService("MarketplaceService")
 
-	local CVersion = "0.7.8:lerp()edit:arrymix"
+	local CVersion = "0.7.9:lerp()"
 
-	local loadupBundle = nil -- replace this with a bundle name to automatically load it up on execute
+	-- these settings are saved and loaded --
+	local loadupBundle = ""
 	local loadupExecute = false
 	local loadupClosed = false
+	local loadupFPerson = 0
+	local KEYBIND = Enum.KeyCode.Insert
+	local hpKEYBIND = Enum.KeyCode.Equals
+	local dpKEYBIND = Enum.KeyCode.Minus
+
+	local maxFPersonMethod = 4
+	local KeybindDetect = false
+	local hpKeybindDetect = false
+	local dpKeybindDetect = false
 
 	local Method = 2
 	local MaxMethod = 3
 
-	local MaxBreastsType = 4
+	local MaxBreastsType = 5
 	local MaxTorsoType = 8
 	local MaxArmType = 4
 	local MaxLegsType = 6
 	local MaxButtType = 3
 
-	local KEYBIND = Enum.KeyCode.Insert
-	local KeybindDetect = false
-
-	local hpKEYBIND = Enum.KeyCode.Equals
-	local hpKeybindDetect = false
-
 	local ClickExecute = false
 
+	local DetectingBundle = false
 	local IsEnterFrame = false
 	local IsMouseDown = false
 
@@ -523,7 +572,8 @@ function RoClothes(Player)
 
 	-- tail stuff --
 	local includedAccessoryNames = {} -- if ur tail isnt recognized as one, put its name here
-	local timeStep = 1 / 120
+	local excludeAccessoryNames = {} -- if ur accessory is recognized as a tail but it isnt, put its name here
+	local timeStep = 1 / 60
 	local inverseTimeStep = 1 / timeStep
 
 	local wagAnimationDropAmplitude = 0.2 -- Default: 0.2. How far in radians the tail will rotate down (90% of this value is rotating down and 10% is up)
@@ -639,6 +689,7 @@ function RoClothes(Player)
 			Volume = 1,
 			TearParticles = true,
 			HealParticles = true,
+			ClothesHP = {},
 
 			PartList = Function.PartListDefault(),
 
@@ -661,7 +712,8 @@ function RoClothes(Player)
 				RealtimeUpdateList = {
 					["Mesh"] = {},
 					["Accessory"] = {},
-					["Special"] = {}
+					["Special"] = {},
+					["SpecialMesh"] = {}
 				},
 				PartParent = {},
 				BodyPartPhysics = {},
@@ -1644,7 +1696,7 @@ function RoClothes(Player)
 				["Transparency"] = 0,
 				["Reflectance"] = 0,
 				["Material"] = Enum.Material.SmoothPlastic,
-				["MeshId"] = "rbxasset://RClothesContent/17873855322.mesh",
+				["MeshId"] = "rbxasset://RClothesContent/70940280228860.mesh",
 				["DoubleSided"] = false,
 				["Color"] = {
 					["Tone"] = "Base",
@@ -1661,7 +1713,7 @@ function RoClothes(Player)
 			["Torso4"] = {
 				["Instance"] = "Mesh",
 				["Name"] = "Torso Mesh",
-				["MeshId"] = "rbxasset://RClothesContent/7829803053.mesh",
+				["MeshId"] = "rbxasset://RClothesContent/133621335195542.mesh",
 				["Size"] = Vector3.new(2.009, 2, 1.127),
 				["CFrame"] = CFrame.new(0, 0, 0, -1, 0, -8.74227766e-08, 0, 1, -0, 8.74227766e-08, -0, -1),
 				["Transparency"] = 0,
@@ -2469,6 +2521,87 @@ function RoClothes(Player)
 				},
 				["Scale"] = "CockScale",
 			}, 
+
+			["Left Breast Type 5"] = {
+				["Instance"] = "Mesh",
+				["Name"] = "Left Breast",
+				["MeshId"] = "rbxasset://RClothesContent/13779805157.mesh",
+				["Size"] = Vector3.new(1.0733778476715088, 1.3004062175750732, 1.0728654861450195),
+				["CFrame"] = CFrame.new(-0.30033493, 0.72069788, -0.438274384, 0.999996841, -4.42379047e-07, 2.08616072e-07, -4.42379076e-07, 0.99999994, 6.68224871e-08, 2.08616157e-07, 6.68224942e-08, 1.00000012),
+				["CFrame1"] = CFrame.new(0.178162053, -0.44884184, -0.306866258, 0.999048233, 0.0436193869, 2.84217094e-14, 0.0436193869, -0.999048233, 6.39498383e-13, 5.62891883e-14, -6.37649981e-13, -1),
+				["Transparency"] = 0,
+				["Material"] = Enum.Material.SmoothPlastic,
+				["Color"] = {
+					["Tone"] = "Base",
+					["Color"] = "Parent"
+				},
+				["Parent"] = {
+					[1] = "Torso"
+				},
+				["Scale"] = "BreastsScale",
+				["AdjustScale"] = {"Size", "CFrame1"}
+			},
+			["Right Breast Type 5"] = {
+				["Instance"] = "Mesh",
+				["Name"] = "Right Breast",
+				["MeshId"] = "rbxasset://RClothesContent/13779805168.mesh",
+				["Size"] = Vector3.new(1.0733778476715088, 1.3004069328308105, 1.0728652477264404),
+				["CFrame"] = CFrame.new(0.299663544, 0.720697641, -0.438274384, 0.999996841, -4.42379047e-07, 2.08616072e-07, -4.42379076e-07, 0.99999994, 6.68224871e-08, 2.08616157e-07, 6.68224942e-08, 1.00000012),
+				["CFrame1"] = CFrame.new(-0.158737123, -0.448922306, -0.306866258, 0.999048233, -0.0436193869, 2.84217094e-14, -0.0436193869, -0.999048233, 6.39498383e-13, 5.00130604e-16, -6.40129443e-13, -1),
+				["Transparency"] = 0,
+				["Material"] = Enum.Material.SmoothPlastic,
+				["Color"] = {
+					["Tone"] = "Base",
+					["Color"] = "Parent"
+				},
+				["Parent"] = {
+					[1] = "Torso"
+				},
+				["Scale"] = "BreastsScale",
+				["AdjustScale"] = {"Size", "CFrame1"}
+			},
+			["Left Nipple Type 5"] = {
+				["Instance"] = "Part",
+				["Name"] = "Nipple",
+				--["MeshId"] = "rbxasset://RClothesContent/13779756984.mesh",
+				--["DoubleSided"] = true,
+				["Size"] = Vector3.new(0.6644159555435181, 0.6212737560272217, 0.7335218191146851),
+				["CFrame"] = CFrame.new(-0.180159852, 0.113487557, 0.296119392, -1, -2.84217094e-14, 4.63045084e-21, 0, 1.62918866e-07, 1, -2.84217162e-14, 1, -1.62918866e-07),
+				["Transparency"] = 0,
+				["Material"] = Enum.Material.SmoothPlastic,
+				["Shape"] = Enum.PartType.Block,
+				["Color"] = {
+					["Tone"] = "Base",
+					["Color"] = "Parent"
+				},
+				["Parent"] = {
+					[1] = "Torso",
+					[2] = "Left Breast",
+				},
+				["Function"] = {"NippleType5Mesh", "AreolaDecalType5Create"},
+				["Scale"] = "BreastsScale"
+			},
+			["Right Nipple Type 5"] = {
+				["Instance"] = "Part",
+				["Name"] = "Nipple",
+				--["MeshId"] = "rbxasset://RClothesContent/13779756939.mesh",
+				--["DoubleSided"] = true,
+				["Size"] = Vector3.new(0.6639117002487183, 0.620802104473114, 0.7329651117324829),
+				["CFrame"] = CFrame.new(0.181330398, 0.113331951, 0.298346341, -1, -8.7422805e-08, 1.24234289e-21, 5.59067207e-20, 4.37104184e-08, 1, -8.74227979e-08, 1, -4.37104148e-08),
+				["Transparency"] = 0,
+				["Material"] = Enum.Material.SmoothPlastic,
+				["Shape"] = Enum.PartType.Block,
+				["Color"] = {
+					["Tone"] = "Base",
+					["Color"] = "Parent"
+				},
+				["Parent"] = {
+					[1] = "Torso",
+					[2] = "Right Breast",
+				},
+				["Function"] = {"NippleType5Mesh", "AreolaDecalType5Create"},
+				["Scale"] = "BreastsScale"
+			},
 			-- CLOTHES PARTS
 			["School Shirt"] = {
 				["Instance"] = "Mesh",
@@ -2742,7 +2875,7 @@ function RoClothes(Player)
 				["Material"] = Enum.Material.SmoothPlastic,
 				["Color"] = {
 					["Tone"] = "Base",
-					["Color"] = Color3.fromRGB(165, 165, 165)
+					["Color"] = Color3.fromRGB(163, 162, 165)
 				},
 				["Parent"] = {
 					[1] = "Torso",
@@ -2793,7 +2926,7 @@ function RoClothes(Player)
 				["Material"] = Enum.Material.SmoothPlastic,
 				["Color"] = {
 					["Tone"] = "Base",
-					["Color"] = Color3.fromRGB(165, 165, 165)
+					["Color"] = Color3.fromRGB(163, 162, 165)
 				},
 				["Parent"] = {
 					[1] = "Torso",
@@ -3082,7 +3215,7 @@ function RoClothes(Player)
 				["Instance"] = "Mesh",
 				["CFrame"] = CFrame.new(-7.62939453e-06, 1.13563347, -0.154616356, -1, 3.61355274e-06, 6.08947687e-07, 3.6135516e-06, 1, -1.92066636e-06, -6.08954679e-07, -1.92066432e-06, -1),
 				["Color"] = {
-					["Color"] = Color3.fromRGB(165, 165, 165),
+					["Color"] = Color3.fromRGB(163, 162, 165),
 					["Tone"] = "Base"
 				},
 				["Recolor"] = "Secondary",
@@ -3934,7 +4067,7 @@ function RoClothes(Player)
 				},
 				["Scale"] = "BreastsScale",
 				["AdjustScale"] = {"Size", "CFrame", ["CFrame1"] = 4.5},
-				["Function"] = {"TorsoShirtTexture", "BreastPhysics"}
+				["Function"] = {"TorsoShirtTexture", "BreastPhysics"},
 			}, 
 			["Breasts Pants"] = {
 				["Instance"] = "Mesh",
@@ -3955,7 +4088,7 @@ function RoClothes(Player)
 				},
 				["Scale"] = "BreastsScale",
 				["AdjustScale"] = {"Size", "CFrame", ["CFrame1"] = 4.5},
-				["Function"] = {"TorsoPantsTexture", "BreastPhysics"}
+				["Function"] = {"TorsoPantsTexture", "BreastPhysics"},
 			},
 			["Torso Shirt"] = {
 				["Instance"] = "Mesh",
@@ -3974,7 +4107,7 @@ function RoClothes(Player)
 					[2] = "Torso Mesh"
 				},
 				["MeshBasePartTransparency"] = 1,
-				["Function"] = "TorsoShirtTexture"
+				["Function"] = "TorsoShirtTexture",
 			},
 			["Right Butt Shirt"] = {
 				["Instance"] = "Mesh",
@@ -3998,7 +4131,7 @@ function RoClothes(Player)
 					[1] = "Torso",
 					[2] = "Right Butt"
 				},
-				["Function"] = "TorsoShirtTexture"
+				["Function"] = "TorsoShirtTexture",
 			},
 			["Left Butt Shirt"] = {
 				["Instance"] = "Mesh",
@@ -4022,7 +4155,7 @@ function RoClothes(Player)
 					[1] = "Torso",
 					[2] = "Left Butt"
 				},
-				["Function"] = "TorsoShirtTexture"
+				["Function"] = "TorsoShirtTexture",
 			},
 			["Right Butt Shirt Method2"] = {
 				["Instance"] = "Mesh",
@@ -4046,7 +4179,7 @@ function RoClothes(Player)
 					[1] = "Torso",
 					[2] = "Right Butt"
 				},
-				["Function"] = "TorsoShirtTexture"
+				["Function"] = "TorsoShirtTexture",
 			},
 			["Left Butt Shirt Method2"] = {
 				["Instance"] = "Mesh",
@@ -4070,7 +4203,7 @@ function RoClothes(Player)
 					[1] = "Torso",
 					[2] = "Left Butt"
 				},
-				["Function"] = "TorsoShirtTexture"
+				["Function"] = "TorsoShirtTexture",
 			},
 			["Left Breast 2"] = {
 				["Instance"] = "Mesh",
@@ -4091,7 +4224,7 @@ function RoClothes(Player)
 					[2] = "Breasts Shirt"
 				},
 				["Scale"] = "BreastsScale",
-				["Function"] = "AreolaDecalCreate"
+				["Function"] = "AreolaDecalCreate",
 			},
 			["Right Breast 2"] = {
 				["Instance"] = "Mesh",
@@ -4112,7 +4245,7 @@ function RoClothes(Player)
 					[2] = "Breasts Shirt"
 				},
 				["Scale"] = "BreastsScale",
-				["Function"] = "AreolaDecalCreate"
+				["Function"] = "AreolaDecalCreate",
 			},
 			["Left Sweater Arm"] = {
 				["Instance"] = "Mesh",
@@ -4970,7 +5103,7 @@ function RoClothes(Player)
 				},
 				["Recolor"] = "Primary",
 				["Parent"] = {
-					[1] = "Left Arm"
+					[1] = "Left Arm",
 				},
 			}, 
 			["Maid Left Arm Band 2"] = {
@@ -4988,7 +5121,7 @@ function RoClothes(Player)
 				},
 				["Recolor"] = "Secondary",
 				["Parent"] = {
-					[1] = "Left Arm"
+					[1] = "Left Arm",
 				},
 			}, 
 			["Maid Leg Band"] = {
@@ -8435,7 +8568,9 @@ function RoClothes(Player)
 					[2] = "Left Breast",
 					[3] = "Nipple",
 				},
-				["Function"] = "Lactation"
+				["Function"] = "Lactation",
+				["Scale"] = "BreastsScale",
+				["AdjustScale"] = {"CFrame"}
 			}, 
 			["Right Nipple Lactation"] = {
 				["Instance"] = "Part",
@@ -8455,7 +8590,9 @@ function RoClothes(Player)
 					[2] = "Right Breast",
 					[3] = "Nipple",
 				},
-				["Function"] = "Lactation"
+				["Function"] = "Lactation",
+				["Scale"] = "BreastsScale",
+				["AdjustScale"] = {"CFrame"}
 			}, 
 			["theOilerFunction"] = {
 				["Instance"] = "Part",
@@ -8597,6 +8734,78 @@ function RoClothes(Player)
 				},
 				["Function"] = "addFreckles"
 			},
+			["RBreastFreckles2"] = {
+				["Instance"] = "Part",
+				["Name"] = "UnnecessaryPart",
+				["Size"] = Vector3.new(0,0,0),
+				["CFrame"] = CFrame.new(0,0,0),
+				["Transparency"] = 1,
+				["Material"] = Enum.Material.Plastic,
+				["DoubleSided"] = false,
+				["Color"] = {
+					["Tone"] = "Base",
+					["Color"] = Color3.fromRGB(0, 0, 0),
+				},
+				["Parent"] = {
+					[1] = "Torso",
+					[2] = "Right Breast"
+				},
+				["Function"] = "addFreckles2"
+			},
+			["LBreastFreckles2"] = {
+				["Instance"] = "Part",
+				["Name"] = "UnnecessaryPart",
+				["Size"] = Vector3.new(0,0,0),
+				["CFrame"] = CFrame.new(0,0,0),
+				["Transparency"] = 1,
+				["Material"] = Enum.Material.Plastic,
+				["DoubleSided"] = false,
+				["Color"] = {
+					["Tone"] = "Base",
+					["Color"] = Color3.fromRGB(0, 0, 0),
+				},
+				["Parent"] = {
+					[1] = "Torso",
+					[2] = "Left Breast"
+				},
+				["Function"] = "addFreckles2"
+			},
+			["RButtFreckles2"] = {
+				["Instance"] = "Part",
+				["Name"] = "UnnecessaryPart",
+				["Size"] = Vector3.new(0,0,0),
+				["CFrame"] = CFrame.new(0,0,0),
+				["Transparency"] = 1,
+				["Material"] = Enum.Material.Plastic,
+				["DoubleSided"] = false,
+				["Color"] = {
+					["Tone"] = "Base",
+					["Color"] = Color3.fromRGB(0, 0, 0),
+				},
+				["Parent"] = {
+					[1] = "Torso",
+					[2] = "Right Butt"
+				},
+				["Function"] = "addFreckles2"
+			},
+			["LButtFreckles2"] = {
+				["Instance"] = "Part",
+				["Name"] = "UnnecessaryPart",
+				["Size"] = Vector3.new(0,0,0),
+				["CFrame"] = CFrame.new(0,0,0),
+				["Transparency"] = 1,
+				["Material"] = Enum.Material.Plastic,
+				["DoubleSided"] = false,
+				["Color"] = {
+					["Tone"] = "Base",
+					["Color"] = Color3.fromRGB(0, 0, 0),
+				},
+				["Parent"] = {
+					[1] = "Torso",
+					[2] = "Left Butt"
+				},
+				["Function"] = "addFreckles2"
+			},
 			["nippleCensorBar"] = {
 				["Instance"] = "Part",
 				["Name"] = "UnnecessaryPart",
@@ -8727,6 +8936,60 @@ function RoClothes(Player)
 					[2] = "Right Leg Mesh",
 				},
 				["Scale"] = "LegsScale",
+			},
+			["HideBreastPantsFunction"] = {
+				["Instance"] = "Part",
+				["Name"] = "UnnecessaryPart",
+				["Size"] = Vector3.new(0,0,0),
+				["CFrame"] = CFrame.new(0,0,0),
+				["Transparency"] = 1,
+				["Material"] = Enum.Material.Plastic,
+				["DoubleSided"] = false,
+				["Color"] = {
+					["Tone"] = "Base",
+					["Color"] = Color3.fromRGB(0, 0, 0),
+				},
+				["Parent"] = {
+					[1] = "Torso"
+				},
+				["Function"] = "HideBreastPants"
+			},
+			["HideBreastShirtFunction"] = {
+				["Instance"] = "Part",
+				["Name"] = "UnnecessaryPart",
+				["Size"] = Vector3.new(0,0,0),
+				["CFrame"] = CFrame.new(0,0,0),
+				["Transparency"] = 1,
+				["Material"] = Enum.Material.Plastic,
+				["DoubleSided"] = false,
+				["Color"] = {
+					["Tone"] = "Base",
+					["Color"] = Color3.fromRGB(0, 0, 0),
+				},
+				["Parent"] = {
+					[1] = "Torso"
+				},
+				["Function"] = "HideBreastShirt"
+			},
+			["Bulge"] = {
+				["Instance"] = "Mesh",
+				["Name"] = "Bulge",
+				["MeshId"] = "rbxasset://RClothesContent/78553849357163.mesh",
+				["Size"] = Vector3.new(1.0286178588867188, 0.8894359469413757, 0.7855360507965088),
+				["CFrame"] = CFrame.new(0, -1.0007814, -0.434062207, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+				["CFrame1"] = CFrame.new(0,.2,.1),
+				["Transparency"] = 0,
+				["Material"] = Enum.Material.SmoothPlastic,
+				["Color"] = {
+					["Tone"] = "Base",
+					["Color"] = "Parent"
+				},
+				["Parent"] = {
+					[1] = "Torso"
+				},
+				["Function"] = "PantsTexture",
+				["Scale"] = "CockScale",
+				["AdjustScale"] = {"Size", "CFrame1"},
 			},
 		}
 	end
@@ -8883,7 +9146,7 @@ function RoClothes(Player)
 	local Bundle = {
 		["nil"] = "nil",
 		["Bald"] = {},
-		["Test"] = {
+		["Sportsy"] = {
 			["Body Color"] = {
 				["HeadColor3"] = Color3.fromRGB(255, 204, 153),
 				["LeftArmColor3"] = Color3.fromRGB(255, 204, 153),
@@ -8893,1119 +9156,46 @@ function RoClothes(Player)
 				["TorsoColor3"] = Color3.fromRGB(255, 204, 153),
 			},
 			["Accessory"] = {
-				5920341268,
-				6441537838,
-				6472725579
-			}
-		},
-		["Lamp"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(215, 197, 154),
-				["LeftArmColor3"] = Color3.fromRGB(215, 197, 154),
-				["RightArmColor3"] = Color3.fromRGB(215, 197, 154),
-				["LeftLegColor3"] = Color3.fromRGB(215, 197, 154),
-				["RightLegColor3"] = Color3.fromRGB(215, 197, 154),
-				["TorsoColor3"] = Color3.fromRGB(215, 197, 154),
+				7097787052,
+				7335390462,
+				8923597159,
+				6310032618
 			},
-			["Accessory"] = {
-				12994235173,
-				4524497759,
-				15449936148,
-				114554632554289,
-				119720696640496,
-				16198201410,
-				119562681468957,
-				80606723661767,
-				4524460158,
-				76385054171166
-			},
-			["Clothes"] = {
-				["Shirt"] = 1347527314, 
-				["Pants"] = 8298871496,
-			},
-			["TClothes"] = {
-				["Shirt"] = 1347527314,
-				["Pants"] = 8298871496
-			},	
 			["Clothing"] = {
-				"Butt Freckles",
-				"Roblox Shirt",
-				"Off Shoulder Hoodie",
-				"Roblox Pants",
-				'Breast Freckles',
-				"Pussy Open",
-			},
-			["Preset"] = {
-				Tone = "Use NippleColor",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1,
-				RotationPhysicsMultiply = 5,
-				BreastsScale = 1.09,
-				ButtsScale = 1.12,
-				LegsScale = 1.1,
-				BreastsType = 2,
-				TorsoType = 8,
-				ArmType = 1,
-				LegsType = 2,
-				ButtType = 2,
-				HardcoreHP = false,
-				TopHP = 0,
-				BottomHP = 0,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-			["NippleColor"] = Color3.fromRGB(149, 126, 104),
-		},	
-		["Ivory TBB"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["TorsoColor3"] = Color3.fromRGB(255, 255, 255),
-			},
-			["Accessory"] = {
-				15083910799,
-				76559120450687,
-				105141783679840,
-				13001168964,
-				14728894164,
-				14728896698,
-				16707579677,
-				12848396996,
-				135889208962150,
-				18228496172,	
-			},
-			["Clothes"] = {
-				["Shirt"] = 12906548651, 
-				["Pants"] = 11827229931,
-			},
-			["TClothes"] = {
-				["Shirt"] = 880341607,
-				["Pants"] = 0
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
+				"Croptop",
 				"Pussy Closed",
-			},
-			["Preset"] = {
-				Tone = "Dark",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1,
-				RotationPhysicsMultiply = 5,
-				BreastsScale = 1.057,
-				ButtsScale = 0.9,
-				LegsScale = 1,
-				BreastsType = 1,
-				TorsoType = 7,
-				ArmType = 1,
-				LegsType = 1,
-				ButtType = 3,
-				HardcoreHP = true,
-				TopHP = 50,
-				BottomHP = 50,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-		},	
-		["Iota TBB"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(249, 214, 46),
-				["LeftArmColor3"] = Color3.fromRGB(249, 214, 46),
-				["RightArmColor3"] = Color3.fromRGB(249, 214, 46),
-				["LeftLegColor3"] = Color3.fromRGB(249, 214, 46),
-				["RightLegColor3"] = Color3.fromRGB(249, 214, 46),
-				["TorsoColor3"] = Color3.fromRGB(249, 214, 46),
-			},
-			["Accessory"] = {
-				15083910799,
-				18771748150,
-				104185335505657,
-				13262492884,
-				212961774,
-				16260807599,
-				84845288490278,
-				100668841966239,
-				8153281046,
-				122232137026453,
-				112347429984327,
-				96583783903610,
-			},
-			["Clothes"] = {
-				["Shirt"] = 767552806, 
-				["Pants"] = 314623575,
-			},
-			["TClothes"] = {
-				["Shirt"] = 767552806,
-				["Pants"] = 0
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				"Pussy Closed",
-			},
-			["Preset"] = {
-				Tone = "Dark",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1,
-				RotationPhysicsMultiply = 5,
-				BreastsScale = 1.057,
-				ButtsScale = 0.9,
-				LegsScale = 1,
-				BreastsType = 1,
-				TorsoType = 7,
-				ArmType = 1,
-				LegsType = 1,
-				ButtType = 3,
-				HardcoreHP = true,
-				TopHP = 50,
-				BottomHP = 50,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-		},	
-		["Martyr TBB"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["TorsoColor3"] = Color3.fromRGB(255, 255, 255),
-			},
-			["Accessory"] = {
-				13196590211, 
-				84680959127600, 
-				99006189159658, 
-				915265974, 
-				9185359710,
-				114813132263944, 
-				13458529673,
-				140004514942071,
-				123380806313056,
-				13556222058,
-			},
-			["Clothes"] = {
-				["Shirt"] = 100116841780119, 
-				["Pants"] = 219861893,
-			},
-			["TClothes"] = {
-				["Shirt"] = 96149389069882,
-				["Pants"] = 0
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				'Nipple Piercing 1',
-				"Pussy Closed",
-			},
-			["Preset"] = {
-				Tone = "Use NippleColor",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1,
-				RotationPhysicsMultiply = 5,
-				BreastsScale = 1.057,
-				ButtsScale = 1,
-				LegsScale = 1,
-				BreastsType = 1,
-				TorsoType = 1,
-				ArmType = 1,
-				LegsType = 1,
-				ButtType = 3,
-				HardcoreHP = true,
-				TopHP = 50,
-				BottomHP = 50,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-			["NippleColor"] = Color3.fromRGB(48, 25, 52),
-		},	
-		["Cheerer"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(254, 152, 219),
-				["LeftArmColor3"] = Color3.fromRGB(254, 200, 200),
-				["RightArmColor3"] = Color3.fromRGB(254, 200, 200),
-				["LeftLegColor3"] = Color3.fromRGB(254, 200, 200),
-				["RightLegColor3"] = Color3.fromRGB(254, 200, 200),
-				["TorsoColor3"] = Color3.fromRGB(254, 200, 200),
-			},
-			["Accessory"] = {
-				15368908193,
-				108460810078507,
-				131309695264210,
-				13570493554,
-				18319933084,
-				89860179134457,
-				94575969446253,
-				18970087631,
-				15433591037,
-			},
-			["Clothes"] = {
-				["Shirt"] = 8549932044,
-				["Pants"] = 1211469425,
-			},
-			["TClothes"] = {
-				["Shirt"] = 0,
-				["Pants"] = 0
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				'Skirt 1',
-				"Pussy Closed",
-			},
-			["Preset"] = {
-				Tone = "Dark",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1,
-				RotationPhysicsMultiply = 5,
-				BreastsScale = 1,
-				ButtsScale = 1,
-				LegsScale = 1,
-				BreastsType = 1,
-				TorsoType = 7,
-				ArmType = 1,
-				LegsType = 1,
-				ButtType = 1,
-				HardcoreHP = true,
-				TopHP = 50,
-				BottomHP = 50,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-			["Recolor"] = {
-				["Skirt 1"] = {
-					["Primary"] = Color3.fromRGB(232, 196, 208)
-			}
-		},
-		},		
-		["Celestial"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["TorsoColor3"] = Color3.fromRGB(255, 255, 255),
-			},
-			["Accessory"] = {
-				13954758718,
-				75258283266172,
-				17179937407,
-				82755268414214,
-				86729401701731,
-				95374101464296,
-				16198146974,
-				110049610443318,
-				72141984489000,
-				87540128215850,
-				125306279465221,
-				15931244830,
-				80070375103977,
-				14687177103,
-				94961118606121,
-				137437041529584,
-			},
-			["Clothes"] = {
-				["Shirt"] = 88243944796103,
-				["Pants"] = 80201872714717,
-			},
-			["TClothes"] = {
-				["Shirt"] = 0,
-				["Pants"] = 0
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				'Pussy Closed',
-			},
-			["Preset"] = {
-				Tone = "Use NippleColor",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1.4,
-				RotationPhysicsMultiply = 4,
-				BreastsScale = 1.15,
-				ButtsScale = 1.1,
-				LegsScale = 1.06,
-				BreastsType = 1,
-				TorsoType = 2,
-				ArmType = 1,
-				LegsType = 3,
-				ButtType = 3,
-				HardcoreHP = true,
-				TopHP = 50,
-				BottomHP = 50,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-			["NippleColor"] = Color3.fromRGB(173, 216, 230),
-		},
-		["Grimoire"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(132, 132, 132),
-				["LeftArmColor3"] = Color3.fromRGB(132, 132, 132),
-				["RightArmColor3"] = Color3.fromRGB(132, 132, 132),
-				["LeftLegColor3"] = Color3.fromRGB(132, 132, 132),
-				["RightLegColor3"] = Color3.fromRGB(132, 132, 132),
-				["TorsoColor3"] = Color3.fromRGB(132, 132, 132),
-			},
-			["Accessory"] = {
-				103068493193313,
-				18276572237,
-				140483245207161,
-				122723184354703,
-				136728394009169,
-				131216123676669,
-				16569744835,
-				130346723197335,
-				119819263981388,
-				129800053802762,
-				126051636826222,
-				94063482693334,
-				108308709967658,
-				12983893292,
-			},
-			["Clothes"] = {
-				["Shirt"] = 125285927098988, 
-				["Pants"] = 14910524024,
-			},
-			["TClothes"] = {
-				["Shirt"] = 0,
-				["Pants"] = 0
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				"Pussy Closed",
-			},
-			["Preset"] = {
-				Tone = "Dark",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1,
-				RotationPhysicsMultiply = 5,
-				BreastsScale = 1,
-				ButtsScale = 1,
-				LegsScale = 1,
-				BreastsType = 1,
-				TorsoType = 7,
-				ArmType = 1,
-				LegsType = 1,
-				ButtType = 1,
-				HardcoreHP = true,
-				TopHP = 50,
-				BottomHP = 50,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-		},
-		["Cassie!"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["TorsoColor3"] = Color3.fromRGB(255, 255, 255),
-			},
-			["Accessory"] = {
-			    13243442326,
-			    95289443169659,
-			    114999260996552,
-			    111861900489606,
-			    6653758716,
-			    17332742362,
-			    16199987677,
-			    15632891267,
-			    72419375711851,
-			},
-			["Clothes"] = {
-				["Shirt"] = 96180310027035,
-				["Pants"] = 122860181765464,
-			},
-			["TClothes"] = {
-				["Shirt"] = 96550645332796,
-				["Pants"] = 139690814246803,
-			},
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Pants",
-				"Roblox Butt Shirt Method2",
-			},
-			["Preset"] = {
-                Tone = "Use NippleColor",
-                Face = false,
-                AccessorySizeLock = true,
-                BodyPartPhysics = true,
-                PhysicsObeyGravity = true,
-                RealtimeBodyTransparency = false,
-                PositionPhysicsMultiply = 1,
-                RotationPhysicsMultiply = 4,
-                BreastsScale = 1.1,
-                ButtsScale = 1.2,
-                LegsScale = 1,
-                BreastsType = 2,
-                TorsoType = 3,
-                ArmType = 2,
-                LegsType = 2,
-                ButtType = 1,
-                HardcoreHP = true,
-                TopHP = 25,
-                BottomHP = 25,
-                DamageSFX = 5,
-                Volume = 2.5,
-            },
-			["NippleColor"] = Color3.fromRGB(255, 230, 230),
-		},
-		["Artful"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["TorsoColor3"] = Color3.fromRGB(255, 255, 255),
-			},
-			["Accessory"] = {
-				12471944802,
-				79627815338226,
-				99455594121581,
-				107017043813707,
-				105949245731969,
-				134817825367110,
-				16569744835,
-				95025858661250,
-				137373731796664,
-			},
-			["Clothes"] = {
-				["Shirt"] = 73170957816729, 
-				["Pants"] = 126203651493856,
-			},
-			["TClothes"] = {
-				["Shirt"] = 0,
-				["Pants"] = 0
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				"Pussy Closed",
-				"Glove 2",
-			},
-			["Preset"] = {
-				Tone = "Use NippleColor",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1,
-				RotationPhysicsMultiply = 5,
-				BreastsScale = 1.05,
-				ButtsScale = 1.03,
-				LegsScale = 1.09,
-				BreastsType = 3,
-				TorsoType = 2,
-				ArmType = 1,
-				LegsType = 2,
-				ButtType = 3,
-				HardcoreHP = true,
-				TopHP = 50,
-				BottomHP = 50,
-				DamageSFX = "0.1",
-				Volume = 100.2,
-			},
-			["NippleColor"] = Color3.fromRGB(80, 80, 80),
-		},
-		["Skittle TBB"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["TorsoColor3"] = Color3.fromRGB(255, 255, 255),
-			},
-			["Accessory"] = {
-				89446144622093,
-				12700082203,
-				18195300623,
-				89060437197936,
-				132656554742425,
-				9242287193,
-				9242392606,
-				9242239061,
-				92753381669634,
-				16785647211,
-				81008972215317,
-				137648087209240,
-				99994117609298,
-			},
-			["Clothes"] = {
-				["Shirt"] = 10569889867, 
-				["Pants"] = 214279136,
-			},
-			["TClothes"] = {
-				["Shirt"] = 0,
-				["Pants"] = 0
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				"Oiled",
-				"Pussy Closed",
-			},
-			["Preset"] = {
-				Tone = "Use NippleColor",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1,
-				RotationPhysicsMultiply = 5,
-				BreastsScale = 1.01,
-				ButtsScale = 1,
-				LegsScale = 1,
-				BreastsType = 1,
-				TorsoType = 1,
-				ArmType = 1,
-				LegsType = 1,
-				ButtType = 1,
-				HardcoreHP = false,
-				TopHP = 50,
-				BottomHP = 50,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-			["NippleColor"] = Color3.fromRGB(96, 31, 158),
-		},	
-		["Ultimate TBB"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["TorsoColor3"] = Color3.fromRGB(255, 255, 255),
-			},
-			["Accessory"] = {
-				13001168964,
-				131405269822097,
-				119170406563899,
-				106631297401803,
-				130991335250207,
-				127072494945361,
-				18212501317,
-				126566248458879,
-				17274841581,
-				16322228773,
-				73920414030715,
-				73221765945636,
-			},
-			["Clothes"] = {
-				["Shirt"] = 12160157312,
-				["Pants"] = 12160153969,
-			},
-			["TClothes"] = {
-				["Shirt"] = 11881610397,
-				["Pants"] = 11881615801
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				'Pussy Closed',
-				'Nipple Piercing 1',
-			},
-			["Preset"] = {
-				Tone = "Dark",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1.4,
-				RotationPhysicsMultiply = 4,
-				BreastsScale = 1.15,
-				ButtsScale = 1.1,
-				LegsScale = 1.05,
-				BreastsType = 1,
-				TorsoType = 2,
-				ArmType = 1,
-				LegsType = 2,
-				ButtType = 1,
-				HardcoreHP = false,
-				TopHP = 50,
-				BottomHP = 30,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-		},
-		["Van1ty"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(254, 200, 200),
-				["LeftArmColor3"] = Color3.fromRGB(254, 200, 200),
-				["RightArmColor3"] = Color3.fromRGB(254, 200, 200),
-				["LeftLegColor3"] = Color3.fromRGB(254, 200, 200),
-				["RightLegColor3"] = Color3.fromRGB(254, 200, 200),
-				["TorsoColor3"] = Color3.fromRGB(254, 200, 200),
-			},
-			["Accessory"] = {
-				17238278,
-				1060284444,
-				102399177587444,
-				14815761,
-				78519397423927,
-				121979758341605,
-				13623290442,
-				15318390289,
-				71002716369892,
-				126443283412566,
-				106852127766627,
-				97150562885217,
-			},
-			["Clothes"] = {
-				["Shirt"] = 9844833,
-				["Pants"] = 9844905,
-			},
-			["TClothes"] = {
-				["Shirt"] = 0,
-				["Pants"] = 0
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				'Pussy Closed',
-			},
-			["Preset"] = {
-				Tone = "Base",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1.4,
-				RotationPhysicsMultiply = 4,
-				BreastsScale = 1.02,
-				ButtsScale = 1.075,
-				LegsScale = 1.03,
-				BreastsType = 2,
-				TorsoType = 3,
-				ArmType = 2,
-				LegsType = 2,
-				ButtType = 1,
-				HardcoreHP = true,
-				TopHP = 50,
-				BottomHP = 50,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-		},
-    	["Van1ty (Displacement)"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(254, 200, 200),
-				["LeftArmColor3"] = Color3.fromRGB(254, 200, 200),
-				["RightArmColor3"] = Color3.fromRGB(254, 200, 200),
-				["LeftLegColor3"] = Color3.fromRGB(254, 200, 200),
-				["RightLegColor3"] = Color3.fromRGB(254, 200, 200),
-				["TorsoColor3"] = Color3.fromRGB(254, 200, 200),
-			},
-			["Accessory"] = {
-				17238278,
-				1060284444,
-				102399177587444,
-				14815761,
-				78519397423927,
-				121979758341605,
-				13623290442,
-				15318390289,
-				71002716369892,
-				126443283412566,
-				106852127766627,
-				97150562885217,
-			},
-			["Clothes"] = {
-				["Shirt"] = 11144170,
-				["Pants"] = 11144181,
-			},
-			["TClothes"] = {
-				["Shirt"] = 0,
-				["Pants"] = 0
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				'Pussy Closed',
-			},
-			["Preset"] = {
-				Tone = "Base",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1.4,
-				RotationPhysicsMultiply = 4,
-				BreastsScale = 1.02,
-				ButtsScale = 1.075,
-				LegsScale = 1.03,
-				BreastsType = 2,
-				TorsoType = 3,
-				ArmType = 2,
-				LegsType = 2,
-				ButtType = 1,
-				HardcoreHP = true,
-				TopHP = 50,
-				BottomHP = 50,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-    	},	
-		["Observer"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(0, 0, 0),
-				["LeftArmColor3"] = Color3.fromRGB(0, 0, 0),
-				["RightArmColor3"] = Color3.fromRGB(0, 0, 0),
-				["LeftLegColor3"] = Color3.fromRGB(0, 0, 0),
-				["RightLegColor3"] = Color3.fromRGB(0, 0, 0),
-				["TorsoColor3"] = Color3.fromRGB(0, 0, 0),
-			},
-			["Accessory"] = {
-				109651035720665,
-				17477112521,
-				85046664445946,
-				97620043255504,
-				107885818711301,
-				86204630884870,
-				140432744825314,
-				18367566973,
-				82718674933894,
-				15941806226,
-			},
-			["Clothes"] = {
-				["Shirt"] = 98777889217041,
-				["Pants"] = 76452570628881,
-			},
-			["TClothes"] = {
-				["Shirt"] = 0,
-				["Pants"] = 0
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				'Pussy Closed',
-				"Oiled",
-			},
-			["Preset"] = {
-				Tone = "Use NippleColor",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1.4,
-				RotationPhysicsMultiply = 4,
-				BreastsScale = 1.02,
-				ButtsScale = 1.02,
-				LegsScale = 1.075,
-				BreastsType = 1,
-				TorsoType = 4,
-				ArmType = 1,
-				LegsType = 2,
-				ButtType = 3,
-				HardcoreHP = true,
-				TopHP = 25,
-				BottomHP = 25,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-			["NippleColor"] = Color3.fromRGB(255, 255, 255),
-		},
-		["Observer (Casual)"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(0, 0, 0),
-				["LeftArmColor3"] = Color3.fromRGB(0, 0, 0),
-				["RightArmColor3"] = Color3.fromRGB(0, 0, 0),
-				["LeftLegColor3"] = Color3.fromRGB(0, 0, 0),
-				["RightLegColor3"] = Color3.fromRGB(0, 0, 0),
-				["TorsoColor3"] = Color3.fromRGB(0, 0, 0),
-			},
-			["Accessory"] = {
-				109651035720665,
-				17477112521,
-				85046664445946,
-				97620043255504,
-				107885818711301,
-				86204630884870,
-				140432744825314,
-				18367566973,
-				82718674933894,
-				15941806226,
-			},
-			["Clothes"] = {
-				["Shirt"] = 139052537839959,
-				["Pants"] = 8401120450,
-			},
-			["TClothes"] = {
-				["Shirt"] = 0,
-				["Pants"] = 0
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				'Pussy Closed',
-				"Oiled",
-			},
-			["Preset"] = {
-				Tone = "Use NippleColor",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1.4,
-				RotationPhysicsMultiply = 4,
-				BreastsScale = 1.02,
-				ButtsScale = 1.02,
-				LegsScale = 1.075,
-				BreastsType = 1,
-				TorsoType = 4,
-				ArmType = 1,
-				LegsType = 2,
-				ButtType = 3,
-				HardcoreHP = true,
-				TopHP = 25,
-				BottomHP = 25,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-			["NippleColor"] = Color3.fromRGB(255, 255, 255),
-		},
-		["Yuki"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(165, 165, 165),
-				["LeftArmColor3"] = Color3.fromRGB(165, 165, 165),
-				["RightArmColor3"] = Color3.fromRGB(165, 165, 165),
-				["LeftLegColor3"] = Color3.fromRGB(165, 165, 165),
-				["RightLegColor3"] = Color3.fromRGB(165, 165, 165),
-				["TorsoColor3"] = Color3.fromRGB(165, 165, 165),
-			},
-			["Accessory"] = {
-				16232301062,
-				74082970155780,
-				89732499570704,
-				91550120938389,
-				122723184354703,
-				102892586972052,
-				100006365138856,
-				14330455963,
-			},
-			["Clothes"] = {
-				["Shirt"] = 125140266300679,
-				["Pants"] = 106286206917131,
-			},
-			["TClothes"] = {
-				["Shirt"] = 110205513449118,
-				["Pants"] = 106286206917131
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				'Pussy Closed',
-				"Butt Freckles",
-				"Breast Freckles",
-			},
-			["Preset"] = {
-				Tone = "Use NippleColor",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1.4,
-				RotationPhysicsMultiply = 4,
-				BreastsScale = 1.1,
-				ButtsScale = 1.12,
-				LegsScale = 1,
-				BreastsType = 1,
-				TorsoType = 4,
-				ArmType = 1,
-				LegsType = 2,
-				ButtType = 1,
-				HardcoreHP = true,
-				TopHP = 25,
-				BottomHP = 25,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-			},
-			["NippleColor"] = Color3.fromRGB(125, 125, 125),
-		},
-		["Cesu"] = {
-			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightArmColor3"] = Color3.fromRGB(255, 255, 255),
-				["LeftLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["RightLegColor3"] = Color3.fromRGB(255, 255, 255),
-				["TorsoColor3"] = Color3.fromRGB(255, 255, 255),
-			},
-			["Accessory"] = {
-				12700082203,
-				12983706644,
-				103285123438087,
-				110851123298085,
-				8674109003,
-				76097322060564,
-				105141783679840,
-				12773926352,
-				114768605131228,
-				15880045942,
-				72215140956811,
-				117175591258587,
-				122715692093824,
-				15096912174,
-			},
-			["Clothes"] = {
-				["Shirt"] = 92995366664493,
-				["Pants"] = 104452997932260,
-			},
-			["TClothes"] = {
-				["Shirt"] = 92995366664493,
-				["Pants"] = 11881615801,
-			},	
-			["Clothing"] = {
-				"Roblox Breasts Clothing",
-				"Roblox Shirt",
-				"Roblox Butt Shirt Method2",
-				"Roblox Pants",
-				'Pussy Closed',
+				"Panty 2",
+				"Shoe 3",
 				"Sock 2",
-			},
-			["Preset"] = {
-				Tone = "Use NippleColor",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1.4,
-				RotationPhysicsMultiply = 4,
-				BreastsScale = 1.1,
-				ButtsScale = 1.1,
-				LegsScale = 1,
-				BreastsType = 1,
-				TorsoType = 7,
-				ArmType = 1,
-				LegsType = 1,
-				ButtType = 1,
-				HardcoreHP = true,
-				TopHP = 25,
-				BottomHP = 25,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-				},
-			["Recolor"] = {
-				["Sock 2"] = {
-					["Primary"] = Color3.fromRGB(0, 0, 0),
-					["Secondary"] = Color3.fromRGB(0, 100, 255)
-			},
+				"Skirt 2",
+				"Glove",
+			}
 		},
-			["NippleColor"] = Color3.fromRGB(0, 175, 255),
-		},
-		["Loveshot"] = {
+		["Mimi"] = {
 			["Body Color"] = {
-				["HeadColor3"] = Color3.fromRGB(123, 92, 70),
-				["LeftArmColor3"] = Color3.fromRGB(123, 92, 70),
-				["RightArmColor3"] = Color3.fromRGB(123, 92, 70),
-				["LeftLegColor3"] = Color3.fromRGB(123, 92, 70),
-				["RightLegColor3"] = Color3.fromRGB(123, 92, 70),
-				["TorsoColor3"] = Color3.fromRGB(123, 92, 70),
+				["HeadColor3"] = Color3.fromRGB(233, 184, 145),
+				["LeftArmColor3"] = Color3.fromRGB(233, 184, 145),
+				["RightArmColor3"] = Color3.fromRGB(233, 184, 145),
+				["LeftLegColor3"] = Color3.fromRGB(233, 184, 145),
+				["RightLegColor3"] = Color3.fromRGB(233, 184, 145),
+				["TorsoColor3"] = Color3.fromRGB(233, 184, 145),
 			},
 			["Accessory"] = {
-				12471950240,
-				80001241901853,
-				14255792410,
-				18879408039,
-				98099740958357,
-				12178699754,
-				14641020553,
-				16028556882,
-				17179864926,
-				104790184085918,
-				16959544062,
-				102573764551896,
-				131301369273605,
+				82879052599298,
+				120729210458213,
+				17590602534,
+				73567120581664,
 			},
 			["Clothes"] = {
-				["Shirt"] = 0,
-				["Pants"] = 0,
+				["Shirt"] = 121936175724069,
+				["Pants"] = 107910834770771,
 			},
-			["TClothes"] = {
-				["Shirt"] = 0,
-				["Pants"] = 0,
-			},	
 			["Clothing"] = {
-				"Oiled",
+				"Roblox Breasts Clothing",
 				"Roblox Shirt",
-				"Colorable Heels [Legs6]",
+				"Roblox Butt Shirt",
 				"Roblox Pants",
-				'Pussy Closed',
-				"Glove",
-				"Cock",
 			},
-			["Preset"] = {
-				Tone = "Dark",
-				Face = false,
-				BodyPartPhysics = true,
-				PhysicsObeyGravity = true,
-				PositionPhysicsMultiply = 1.4,
-				RotationPhysicsMultiply = 4,
-				BreastsScale = 1.1,
-				ButtsScale = 1.1,
-				LegsScale = 1.2,
-				BreastsType = 1,
-				TorsoType = 7,
-				ArmType = 1,
-				LegsType = 6,
-				ButtType = 1,
-				HardcoreHP = true,
-				TopHP = 25,
-				BottomHP = 25,
-				DamageSFX = 0.1,
-				Volume = 100.2,
-				CockScale = 1.1,
-			},
-			["Recolor"] = {
-				["Colorable Heels [Legs6]"] = {
-					["Primary"] = Color3.fromRGB(155, 0, 175),
-			},
-		},
-				["NippleColor"] = Color3.fromRGB(92, 64, 51),
 		},
 		-- Clothing Bundles --
 		["Roblox Clothing"] = {
@@ -10030,14 +9220,14 @@ function RoClothes(Player)
 				"Birdly Dress",
 				"Birdly Backpack",
 				"Birdly Bottom Dress",
-				"Birdly Sleeves"
+				"Birdly Sleeves",
 			},
 			["ClothingBundle"] = true
 		},
 		["Cow Bikini"] = {
 			["Clothing"] = {
 				"Cow Bra",
-				"Cow Panty"
+				"Cow Panty",
 			},
 			["Preset"] = {
 				BreastsScale = 1
@@ -10049,7 +9239,7 @@ function RoClothes(Player)
 				"Kitty Bra",
 				"Kitty Panty",
 				"Kitty Band",
-				"Kitty Aspects"
+				"Kitty Aspects",
 			},
 			["Preset"] = {
 				BreastsScale = 1
@@ -10104,6 +9294,13 @@ function RoClothes(Player)
 			["Clothing"] = {
 				"Breast Freckles",
 				"Butt Freckles",
+			},
+			["ClothingBundle"] = true
+		},
+		["Freckles+"] = {
+			["Clothing"] = {
+				"Breast Freckles+",
+				"Butt Freckles+",
 			},
 			["ClothingBundle"] = true
 		},
@@ -10272,7 +9469,7 @@ function RoClothes(Player)
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			}
 		},
 		["Birdly Dress"] = {
@@ -10281,7 +9478,7 @@ function RoClothes(Player)
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			}
 		},
 		["Birdly Backpack"] = {
@@ -10336,7 +9533,7 @@ function RoClothes(Player)
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			}
 		},
 		["Cow Panty"] = {
@@ -10356,7 +9553,7 @@ function RoClothes(Player)
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			}
 		},
 		["Bunny Bands"] = {
@@ -10384,7 +9581,7 @@ function RoClothes(Player)
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			}
 		},
 		["Kitty Aspects"] = {
@@ -10399,7 +9596,7 @@ function RoClothes(Player)
 				[2] = "Left Kitty Panty Paw",
 				[3] = "Left Kitty Panty String",
 				[4] = "Right Kitty Panty Paw",
-				[5] = "Right Kitty Panty String"
+				[5] = "Right Kitty Panty String",
 			},
 		},
 		["Kitty Band"] = {
@@ -10416,7 +9613,7 @@ function RoClothes(Player)
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			},
 		},
 		["Side Skirt"] = {
@@ -10430,7 +9627,7 @@ function RoClothes(Player)
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			},
 		},
 		["String Bikini"] = {
@@ -10439,7 +9636,7 @@ function RoClothes(Player)
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			}
 		},
 		["Bra 2"] = {
@@ -10448,7 +9645,7 @@ function RoClothes(Player)
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			}
 		},
 		["Panty 2"] = {
@@ -10461,41 +9658,58 @@ function RoClothes(Player)
 				[1] = "Breasts Pants",
 				[2] = "Breasts Shirt",
 				[3] = "Left Breast 2",
-				[4] = "Right Breast 2"
+				[4] = "Right Breast 2",
 			},
 			["Unvisible"] = {
 				"Left Nipple",
 				"Right Nipple",
 				"Left Breast",
 				"Right Breast",
-			}
+			},
+			["HP"] = 1
+		},
+		["Hide Breast Pants"] = {
+			["Weld"] = {
+				[1] = "HideBreastPantsFunction"
+			},
+		},
+		["Hide Breast Shirt"] = {
+			["Weld"] = {
+				[1] = "HideBreastShirtFunction"
+			},
 		},
 		["Roblox Shirt"] = {
 			["Weld"] = {
 				[1] = "Torso Shirt",
-			}
+			},
+			["HP"] = 1,
+			["HPFunction"] = "TopLayer"
 		},
 		["Roblox Butt Shirt"] = {
 			["Weld"] = {
 				[1] = "Left Butt Shirt",
 				[2] = "Right Butt Shirt",
-			}
+			},
+			["HP"] = 1
 		},
 		["Roblox Butt Shirt Method2"] = {
 			["Weld"] = {
 				[1] = "Left Butt Shirt Method2",
 				[2] = "Right Butt Shirt Method2",
-			}
+			},
+			["HP"] = 1
 		},
 		["Roblox Pants"] = {
 			["Weld"] = {
-			}
+			},
+			["HP"] = 2,
+			["HPFunction"] = "BottomLayer"
 		},
 		["Sweater"] = {
 			["Weld"] = {
 				[1] = "Sweater Shirt",
 				[2] = "Left Sweater Arm",
-				[3] = "Right Sweater Arm"
+				[3] = "Right Sweater Arm",
 			},
 			["Unvisible"] = {
 				"Left Nipple",
@@ -10678,13 +9892,15 @@ function RoClothes(Player)
 			["Weld"] = {
 				[1] = "Left Breast Cum",
 				[2] = "Right Breast Cum",
-			}
+			},
+			["HP"] = 3,
 		},
 		["Breasts Cum Type2"] = {
 			["Weld"] = {
 				[1] = "Left Breast Cum Type2",
 				[2] = "Right Breast Cum Type2",
-			}
+			},
+			["HP"] = 3,
 		},
 		["Face Cum 2"] = {
 			["Weld"] = {
@@ -10791,7 +10007,7 @@ function RoClothes(Player)
 		},
 		["Scarf"] = {
 			["Weld"] = {
-				[1] = "Scarf"
+				[1] = "Scarf",
 			}
 		},
 		["Off Shoulder Hoodie"] = {
@@ -10975,21 +10191,24 @@ function RoClothes(Player)
 				[1] = "BBC Rod",
 				[2] = "BBC Tip",
 				[3] = "BBC Balls",
-			}
+			},
+			["HP"] = 4,
 		},
 		["BBC Cock w/ Easter Ball Paint"] = {
 			["Weld"] = {
 				[1] = "BBC Rod",
 				[2] = "BBC Tip",
 				[3] = "EasterSack",
-			}
+			},
+			["HP"] = 4,
 		},
 		["Cock"] = {
 			["Weld"] = {
 				[1] = "Cock",
 				[2] = "Tip",
 				[3] = "Balls",
-			}
+			},
+			["HP"] = 4,
 		},
 		["Remove Breasts"] = {
 			["Unvisible"] = {
@@ -11031,7 +10250,8 @@ function RoClothes(Player)
 				[2] = "Clitoris Closed",
 				[3] = "Vulva Closed",
 				[4] = "Vagina Closed",
-			}
+			},
+			["HP"] = 4,
 		},
 		["Pussy Open"] = {
 			["Weld"] = {
@@ -11039,24 +10259,27 @@ function RoClothes(Player)
 				[2] = "Clitoris Open",
 				[3] = "Vulva Open",
 				[4] = "Vagina Open",
-			}
+			},
+			["HP"] = 4,
 		},
 		["Pussy Cum"] = {
 			["Weld"] = {
 				[1] = "PussyCumAttacher",
-				[2] = "Pussy Cum"
-			}
+				[2] = "Pussy Cum",
+			},
+			["HP"] = 4,
 		},
 		["Pussy Cum w/o Trail"] = {
 			["Weld"] = {
 				[1] = "PussyCumAttacher",
 				[2] = "Pussy Cum Trailless"
-			}
+			},
+			["HP"] = 4,
 		},
 		["Buttplug"] = {
 			["Weld"] = {
 				[1] = "Buttplug",
-				[2] = "ButtplugGem"
+				[2] = "ButtplugGem",
 			}
 		},
 		["Croptop"] = {
@@ -11066,13 +10289,13 @@ function RoClothes(Player)
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			}
 		},
 		["Uncover Croptop"] = {
 			["Weld"] = {
 				[1] = "Lift Croptop",
-				[2] = "Croptop Neck"
+				[2] = "Croptop Neck",
 			}
 		},
 		["Croptop w/o Neck"] = {
@@ -11081,21 +10304,21 @@ function RoClothes(Player)
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			}
 		},
 		["Uncover Croptop w/o Neck"] = {
 			["Weld"] = {
-				[1] = "Lift Croptop"
+				[1] = "Lift Croptop",
 			}
 		},
 		["Cloth Bra"] = {
 			["Weld"] = {
-				[1] = "Cloth Bra"
+				[1] = "Cloth Bra",
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			}
 		},
 		["Cropped Sweater"] = {
@@ -11106,25 +10329,25 @@ function RoClothes(Player)
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			}
 		},
 		["Cropped Sweater 2"] = {
 			["Weld"] = {
 				[1] = "Crop Sweater 2",
 				[2] = "Sweater Left Arm",
-				[3] = "Sweater Right Arm"
+				[3] = "Sweater Right Arm",
 			},
 			["Unvisible"] = {
 				"Left Nipple",
-				"Right Nipple"
+				"Right Nipple",
 			}
 		},
 		["Cropped Uncover Sweater"] = {
 			["Weld"] = {
 				[1] = "Uncovered Crop Sweater",
 				[2] = "Sweater Left Arm",
-				[3] = "Sweater Right Arm"
+				[3] = "Sweater Right Arm",
 			}
 		},
 		["Nipple Vibrators"] = {
@@ -11132,14 +10355,17 @@ function RoClothes(Player)
 				[1] = "Left Vibrator Bullet",
 				[2] = "Right Vibrator Bullet",
 				[3] = "Vibrator Buttons",
-				[4] = "Vibrator Tape"
-			}
+				[4] = "Vibrator Tape",
+			},
+			["HP"] = 3,
 		},
 		["Lactation"] = {
 			["Weld"] = {
 				[1] = "Left Nipple Lactation",
-				[2] = "Right Nipple Lactation"
-			}
+				[2] = "Right Nipple Lactation",
+			},
+			["HP"] = 3,
+			["HPFunction"] = "HPLactation"
 		},
 		["Fishnet Stockings"] = {
 			["Weld"] = {
@@ -11183,9 +10409,21 @@ function RoClothes(Player)
 				[2] = "LButtFreckles",
 			}
 		},
+		["Breast Freckles+"] = {
+			["Weld"] = {
+				[1] = "RBreastFreckles2",
+				[2] = "LBreastFreckles2",
+			}
+		},
+		["Butt Freckles+"] = {
+			["Weld"] = {
+				[1] = "RButtFreckles2",
+				[2] = "LButtFreckles2",
+			}
+		},
 		["Nipple Censor Bar"] = {
 			["Weld"] = {
-				[1] = "nippleCensorBar"
+				[1] = "nippleCensorBar",
 			}
 		},
 		["Heels [Legs6]"] = {
@@ -11215,8 +10453,9 @@ function RoClothes(Player)
 				[7] = "blShaft",
 				[8] = "trShaft",
 				[9] = "tlShaft",
-				[10] = "tipKnot"
-			}
+				[10] = "tipKnot",
+			},
+			["HP"] = 4,
 		},
 		["Retracted Knot"] = {
 			["Weld"] = {
@@ -11224,7 +10463,8 @@ function RoClothes(Player)
 				[2] = "ballsKnot",
 				[3] = "sheathKnot",
 				[4] = "retracted",
-			}
+			},
+			["HP"] = 4,
 		},
 		["Furry Knot [NEON]"] = {
 			["Weld"] = {
@@ -11237,8 +10477,9 @@ function RoClothes(Player)
 				[7] = "blShaftN",
 				[8] = "trShaftN",
 				[9] = "tlShaftN",
-				[10] = "tipKnotN"
-			}
+				[10] = "tipKnotN",
+			},
+			["HP"] = 4,
 		},
 		["Retracted Knot [NEON]"] = {
 			["Weld"] = {
@@ -11246,7 +10487,14 @@ function RoClothes(Player)
 				[2] = "ballsKnot",
 				[3] = "sheathKnot",
 				[4] = "retractedN",
-			}
+			},
+			["HP"] = 4,
+		},
+		["Bulge"] = {
+			["Weld"] = {
+				[1] = "Bulge"
+			},
+			["HP"] = 2,
 		},
 	}
 
@@ -11269,14 +10517,15 @@ function RoClothes(Player)
 			["Shape"] = Enum.PartType.Block,
 			["Color"] = {
 				["Tone"] = "Base",
-				["Color"] = Color3.fromRGB(165, 165, 165)
+				["Color"] = Color3.fromRGB(163, 162, 165)
 			},
 			["Parent"] = {
 				[1] = "Torso",
 			},
 			["Function"] = "",
 			["Scale"] = nil,
-			["AdjustScale"] = {"Size", "CFrame", "CFrame1"}
+			["AdjustScale"] = {"Size", "CFrame", "CFrame1"},
+			["HP"] = ""
 		}
 	}
 
@@ -11391,6 +10640,16 @@ function RoClothes(Player)
 		particle.VelocityInheritance = .3
 		task.delay(0,function()
 			particle.Color = ColorSequence.new(ObjectInstance.Color)
+			if PlayerData[Data].BreastsType == 5 then
+				particle.EmissionDirection = Enum.NormalId.Top
+				if ObjectInstance.Parent.Parent.Name == "Left Breast" then
+					PlayerData[Data].CurrentPartList.RealtimeUpdateList.Mesh[ObjectInstance].Weld.C0 = CFrame.new(0.123999998, 0.244960785, -0.0383028984, 0.866025388, 0.5, -0, -0.5, 0.866025388, -0, 0, 0, 1)
+					PlayerData[Data].CurrentPartList.RealtimeUpdateList.Mesh[ObjectInstance].CFrame = CFrame.new(0.123999998, 0.244960785, -0.0383028984, 0.866025388, 0.5, -0, -0.5, 0.866025388, -0, 0, 0, 1)
+				else
+					PlayerData[Data].CurrentPartList.RealtimeUpdateList.Mesh[ObjectInstance].Weld.C0 = CFrame.new(-0.124103546, 0.244960785, -0.0383028984, 0.866027117, -0.499990761, -1.61431331e-06, 0.499992698, 0.866029799, -3.49144102e-06, 2.21932714e-06, 2.92656478e-06, 0.99999994)
+					PlayerData[Data].CurrentPartList.RealtimeUpdateList.Mesh[ObjectInstance].CFrame = CFrame.new(-0.124103546, 0.244960785, -0.0383028984, 0.866027117, -0.499990761, -1.61431331e-06, 0.499992698, 0.866029799, -3.49144102e-06, 2.21932714e-06, 2.92656478e-06, 0.99999994)
+				end
+			end
 		end)
 	end
 
@@ -11427,6 +10686,7 @@ function RoClothes(Player)
 						overlay.Size = v.Size + Vector3.new(.001,.001,.001)
 						overlay.Transparency = 0.01
 						PlayerData[Data].CurrentPartList.TransparencyLink[overlay] = {T=v,Define=.01}
+						PlayerData[Data].CurrentPartList.RealtimeUpdateList.Mesh[overlay] = {Base=v.Parent,Size=overlay.Size,CFrame=CFrame.new(0,0,0),CFrame1=CFrame.new(0,0,0),Weld=overlayWeld}
 						overlay.TextureID = v:FindFirstChildOfClass("SurfaceAppearance").ColorMap
 					end
 					v:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
@@ -11449,6 +10709,7 @@ function RoClothes(Player)
 						overlay.Size = v.Size + Vector3.new(.001,.001,.001)
 						overlay.Transparency = 0.01
 						PlayerData[Data].CurrentPartList.TransparencyLink[overlay] = {T=v,Define=.01}
+						PlayerData[Data].CurrentPartList.RealtimeUpdateList.Mesh[overlay] = {Base=v.Parent,Size=overlay.Size,CFrame=CFrame.new(0,0,0),CFrame1=CFrame.new(0,0,0),Weld=overlayWeld}
 						overlay.TextureID = v:FindFirstChildOfClass("SurfaceAppearance").ColorMap
 					end
 					v:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
@@ -11488,6 +10749,7 @@ function RoClothes(Player)
 						overlay.Size = v.Size + Vector3.new(.001,.001,.001)
 						overlay.Transparency = 0.01
 						PlayerData[Data].CurrentPartList.TransparencyLink[overlay] = {T=v,Define=.01}
+						PlayerData[Data].CurrentPartList.RealtimeUpdateList.Mesh[overlay] = {Base=v.Parent,Size=overlay.Size,CFrame=CFrame.new(0,0,0),CFrame1=CFrame.new(0,0,0),Weld=overlayWeld}
 					end
 					v:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
 				end
@@ -11523,6 +10785,7 @@ function RoClothes(Player)
 						overlay.Size = v.Size + Vector3.new(.001,.001,.001)
 						overlay.Transparency = 0.01
 						PlayerData[Data].CurrentPartList.TransparencyLink[overlay] = {T=v,Define=.01}
+						PlayerData[Data].CurrentPartList.RealtimeUpdateList.Mesh[overlay] = {Base=v.Parent,Size=overlay.Size,CFrame=CFrame.new(0,0,0),CFrame1=CFrame.new(0,0,0),Weld=overlayWeld}
 					end
 					v:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
 				end
@@ -11617,6 +10880,26 @@ function RoClothes(Player)
 		end)
 	end
 
+	function Function.HideBreastPants(ObjectInstance, Character, Extra, Data)
+		task.delay(0,function()
+			if PlayerData[Data].CurrentPartList.Clothes["Breasts Pants"] then
+				local organ = PlayerData[Data].CurrentPartList.Clothes["Breasts Pants"]
+				PlayerData[Data].CurrentPartList.RealtimeUpdateList.Mesh[organ].Size = Vector3.new(0,0,0)
+				organ.Size = Vector3.new(0,0,0)
+			end
+		end)
+	end
+
+	function Function.HideBreastShirt(ObjectInstance, Character, Extra, Data)
+		task.delay(0,function()
+			if PlayerData[Data].CurrentPartList.Clothes["Breasts Shirt"] then
+				local organ = PlayerData[Data].CurrentPartList.Clothes["Breasts Shirt"]
+				PlayerData[Data].CurrentPartList.RealtimeUpdateList.Mesh[organ].Size = Vector3.new(0,0,0)
+				organ.Size = Vector3.new(0,0,0)
+			end
+		end)
+	end
+
 	function Function.addFreckles(ObjectInstance, Character, Extra, Data)
 		if ObjectInstance.Name == "UnnecessaryPart" then
 			ObjectInstance = ObjectInstance.Parent
@@ -11627,6 +10910,33 @@ function RoClothes(Player)
 			Texture.Texture = "rbxassetid://7317286674"
 			Texture.Transparency = 0.55
 			PlayerData[Data].CurrentPartList.TransparencyLink[Texture] = {T=ObjectInstance,Define=.55}
+
+			if i == 1 then
+				Texture.Face = "Left"
+			elseif i == 2 then
+				Texture.Face = "Right"
+			elseif i == 3 then
+				Texture.Face = "Back"
+			elseif i == 4 then
+				Texture.Face = "Front"
+			elseif i == 5 then
+				Texture.Face = "Bottom"
+			elseif i == 6 then
+				Texture.Face = "Top"
+			end
+		end
+	end
+
+	function Function.addFreckles2(ObjectInstance, Character, Extra, Data)
+		if ObjectInstance.Name == "UnnecessaryPart" then
+			ObjectInstance = ObjectInstance.Parent
+		end
+		for i = 1, 6 do
+			local Texture = Instance.new("Decal", ObjectInstance)
+			Texture.Color3 = Color3.fromRGB(255,255,255)
+			Texture.Texture = "rbxassetid://7317286674"
+			Texture.Transparency = 0.55
+			PlayerData[Data].CurrentPartList.TransparencyLink[Texture] = {T=ObjectInstance,Define=.3}
 
 			if i == 1 then
 				Texture.Face = "Left"
@@ -11880,6 +11190,89 @@ function RoClothes(Player)
 				end
 			end
 		end
+	end
+
+	function Function.AreolaDecalType5Create(ObjectInstance, Character, Extra, Data)
+		--[[local Decal = Instance.new("SurfaceAppearance", ObjectInstance)
+		ObjectInstance:AddTag("ImportantSurfaceAppearance")
+		Decal.Color = Color3.fromRGB(255, 167, 169)
+		Decal.ColorMap = "rbxassetid://13779954418.png"
+		Decal.Name = "Areola Decal"
+
+		if Extra.Tone == "Dark" then
+			local H,S,V = ObjectInstance.Color:ToHSV()
+			local DarkerColorCode = Color3.fromHSV(H,S,V+(-DarkerColorPercentage * V/100))
+
+			Decal.Color = DarkerColorCode
+		elseif Extra.Tone == "Use NippleColor" then
+			if Extra.NippleColor ~= nil then
+				Decal.Color = Extra.NippleColor
+			end
+		end]]
+
+		if not table.find(PlayerData[Data].CurrentClothes, "Roblox Breasts Clothing") and ObjectInstance.Transparency ~= 1 or table.find(PlayerData[Data].CurrentClothes, "Roblox Breasts Clothing") and (ObjectInstance.Name ~= "Left Breast" and ObjectInstance.Name ~= "Right Breast") and ObjectInstance.Transparency ~= 1 then
+			local Decal = Instance.new("Decal", ObjectInstance)
+			Decal.Color3 = Color3.fromRGB(255, 167, 169)
+			Decal.Texture = "rbxasset://RClothesContent/13779954418.png"
+			Decal.Face = "Right"
+			Decal.Name = "Areola Decal"
+			PlayerData[Data].CurrentPartList.AreolaDecal[Decal] = ObjectInstance
+
+			if Extra.Tone == "Dark" then
+				local H,S,V = ObjectInstance.Color:ToHSV()
+				local DarkerColorCode = Color3.fromHSV(H,S,V+(-DarkerColorPercentage * V/100))
+
+				Decal.Color3 = DarkerColorCode
+			elseif Extra.Tone == "Use NippleColor" then
+				if Extra.NippleColor ~= nil then
+					Decal.Color3 = Extra.NippleColor
+				end
+			end
+		else
+			local Decal = Instance.new("Decal", ObjectInstance)
+			Decal.Transparency = 1
+			Decal.Color3 = Color3.fromRGB(255, 167, 169)
+			Decal.Texture = "rbxasset://RClothesContent/13779954418.png"
+			Decal.Face = "Right"
+			Decal.Name = "Areola Decal"
+			PlayerData[Data].CurrentPartList.AreolaDecal[Decal] = ObjectInstance
+
+			if Extra.Tone == "Dark" then
+				local H,S,V = ObjectInstance.Color:ToHSV()
+				local DarkerColorCode = Color3.fromHSV(H,S,V+(-DarkerColorPercentage * V/100))
+
+				Decal.Color3 = DarkerColorCode
+			elseif Extra.Tone == "Use NippleColor" then
+				if Extra.NippleColor ~= nil then
+					Decal.Color3 = Extra.NippleColor
+				end
+			end
+		end
+	end
+
+	function Function.NippleType5Mesh(ObjectInstance, Character, Extra, Data)
+		local SpecialMesh = Instance.new("SpecialMesh")
+		local Scale = PlayerData[Data]["BreastsScale"]
+
+		SpecialMesh.MeshType = Enum.MeshType.FileMesh
+
+		if ObjectInstance.Parent.Name == "Left Breast" then
+			SpecialMesh.MeshId = "rbxasset://RClothesContent/13779756984.mesh"
+		else
+			SpecialMesh.MeshId = "rbxasset://RClothesContent/13779756939.mesh"
+		end
+
+		if Scale ~= nil then
+			SpecialMesh.Scale = Function.Vector3Multiply(Vector3.new(0.336, 0.332, 0.333), {X = Scale, Y = Scale, Z = Scale})
+		else
+			SpecialMesh.Scale = Vector3.new(0.336, 0.332, 0.333)
+		end
+
+		SpecialMesh.Parent = ObjectInstance
+		PlayerData[Data].CurrentPartList.RealtimeUpdateList.SpecialMesh[SpecialMesh] = {
+			Base=Character:FindFirstChild("Torso"),
+			Size=SpecialMesh.Scale,
+		}
 	end
 
 	function Function.DarkPart(ObjectInstance, Character, Extra, Data)
@@ -12248,6 +11641,138 @@ function RoClothes(Player)
 		end
 	end
 
+	function Function.TopLayer(Visible, c, Data)
+		local PData = PlayerData[Data]
+		local appliedOrgans = {
+			PData.CurrentPartList["Organ"]["Left Arm"],
+			PData.CurrentPartList["Organ"]["Right Arm"]
+		}
+		if Visible == false then
+			for i, v in pairs(appliedOrgans) do
+				if v:FindFirstChild(v.Name.. "OILOVERLAY") then
+					local s = v:FindFirstChild(v.Name.. "OILOVERLAY")
+					if PData.HPClothes.Shirt ~= "" and not tonumber(PData.HPClothes.Shirt) then
+						s.TextureID = PData.HPClothes.Shirt.ShirtTemplate
+					else
+						s.Transparency = 1
+						s:SetAttribute("MaxTransparenyRC",1)
+					end
+				else
+					if v:FindFirstChildOfClass("SurfaceAppearance") then
+						v:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
+					end
+					if PData.HPClothes.Shirt ~= "" and not tonumber(PData.HPClothes.Shirt) then
+						Function.ShirtTexture(v,nil,{Shirt = PData.HPClothes.Shirt},Data)
+					end
+				end
+			end
+
+			if PData.HPClothes.Shirt ~= "" and not tonumber(PData.HPClothes.Shirt) then
+				if not PData.HPClothes.Pants then
+					local v = PData.CurrentPartList["Organ"]["Torso"]
+					if v:FindFirstChild(v.Name.. "OILOVERLAY") then
+						local s = v:FindFirstChild(v.Name.. "OILOVERLAY")
+						s.TextureID =  PData.HPClothes.Shirt.ShirtTemplate
+					else
+						Function.ShirtTexture(PData.CurrentPartList["Organ"]["Torso"],c,{Shirt = PData.HPClothes.Shirt},Data)
+					end
+				end
+			end
+		else
+			for i, v in pairs(appliedOrgans) do
+				if v:FindFirstChild(v.Name.. "OILOVERLAY") then
+					local s = v:FindFirstChild(v.Name.. "OILOVERLAY")
+					if c:FindFirstChildOfClass("Shirt") then
+						s:SetAttribute("MaxTransparenyRC",nil)
+						s.TextureID = c:FindFirstChildOfClass("Shirt").ShirtTemplate
+					end
+				else
+					if v:FindFirstChildOfClass("SurfaceAppearance") then
+						v:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
+					end
+					if c:FindFirstChildOfClass("Shirt") then
+						Function.ShirtTexture(v,c,{Shirt = c:FindFirstChildOfClass("Shirt")},Data)
+					end
+				end
+			end
+
+			local v = PData.CurrentPartList["Organ"]["Torso"]
+			if (not c:FindFirstChildOfClass("Pants") or not PData.HPClothes.Pants) and v:FindFirstChildOfClass("SurfaceAppearance") then
+				if v:FindFirstChild(v.Name.. "OILOVERLAY") then
+					local s = v:FindFirstChild(v.Name.. "OILOVERLAY")
+					s:SetAttribute("MaxTransparenyRC",1)
+				else
+					PData.CurrentPartList["Organ"]["Torso"]:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
+				end
+			end
+		end
+	end
+
+	function Function.BottomLayer(Visible, c, Data)
+		local PData = PlayerData[Data]
+		local appliedOrgans = {
+			PData.CurrentPartList["Organ"]["Torso"],
+			PData.CurrentPartList["Organ"]["Left Leg"],
+			PData.CurrentPartList["Organ"]["Right Leg"],
+			PData.CurrentPartList["Organ"]["Left Butt"],
+			PData.CurrentPartList["Organ"]["Right Butt"]
+		}
+
+		if Visible == false then
+			for i, v in pairs(appliedOrgans) do
+				if v:FindFirstChild(v.Name.. "OILOVERLAY") then
+					local s = v:FindFirstChild(v.Name.. "OILOVERLAY")
+					if PData.HPClothes.Pants ~= "" and not tonumber(PData.HPClothes.Pants) then
+						s.TextureID = PData.HPClothes.Pants.PantsTemplate
+					else
+						s.Transparency = 1
+						s:SetAttribute("MaxTransparenyRC",1)
+					end
+				else
+					if v:FindFirstChildOfClass("SurfaceAppearance") then
+						v:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
+					end
+					if PData.HPClothes.Pants ~= "" and not tonumber(PData.HPClothes.Pants) then
+						Function.PantsTexture(v,nil,{Pants = PData.HPClothes.Pants},Data)
+					end
+				end
+			end
+		else
+			for i, v in pairs(appliedOrgans) do
+				if v:FindFirstChild(v.Name.. "OILOVERLAY") then
+					local s = v:FindFirstChild(v.Name.. "OILOVERLAY")
+					if c:FindFirstChildOfClass("Pants") then
+						s:SetAttribute("MaxTransparenyRC",nil)
+						s.TextureID = c:FindFirstChildOfClass("Pants").PantsTemplate
+					end
+				else
+					if v:FindFirstChildOfClass("SurfaceAppearance") then
+						v:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
+					end
+					if c:FindFirstChildOfClass("Shirt") then
+						Function.PantsTexture(v,c,{Pants = c:FindFirstChildOfClass("Pants")},Data)
+					end
+				end
+			end
+		end
+	end
+
+	function Function.HPLactation(Visible, Character, Data)
+		local PData = PlayerData[Data]
+		local particleOrgans = {
+			PData.CurrentPartList["Organ"]["Left Nipple"],
+			PData.CurrentPartList["Organ"]["Right Nipple"],
+		}
+		for i, v in pairs(particleOrgans) do
+			if v:FindFirstChild("Lactation") then
+				local s = v:FindFirstChild("Lactation")
+				if s:FindFirstChildOfClass("ParticleEmitter") then
+					s:FindFirstChildOfClass("ParticleEmitter").Enabled = Visible
+				end
+			end
+		end
+	end
+
 	----------------------------------------------------------------------------------------------------
 	----------------------------------------------------------------------------------------------------
 	----------------------------------------------------------------------------------------------------
@@ -12445,6 +11970,9 @@ function RoClothes(Player)
 		for _, accessoryName in includedAccessoryNames do
 			includedAccessoryNamesValidationSet[accessoryName] = true
 		end
+		for _, accessoryName in excludeAccessoryNames do
+			includedAccessoryNamesValidationSet[accessoryName] = false
+		end
 		includedAccessoryNamesValidationSetNeedsUpdating = false
 	end
 
@@ -12452,13 +11980,14 @@ function RoClothes(Player)
 		local accessoryType = accessory.AccessoryType
 		local accessoryName = accessory.Name
 		if accessoryType == Enum.AccessoryType.Back or accessoryType == Enum.AccessoryType.Waist then
+			if includedAccessoryNamesValidationSetNeedsUpdating then updateIncludedAccessoryNamesValidationSet() end
 			if string.find(string.lower(accessoryName), "tail", 1, true) then
-				return true
-			else
-				if includedAccessoryNamesValidationSetNeedsUpdating then updateIncludedAccessoryNamesValidationSet() end
-				if includedAccessoryNamesValidationSet[accessoryName] then
+				if includedAccessoryNamesValidationSet[accessoryName] == nil
+					or includedAccessoryNamesValidationSet[accessoryName] == true then
 					return true
 				end
+			elseif includedAccessoryNamesValidationSet[accessoryName] then
+				return true
 			end
 		end
 		return false
@@ -12844,6 +12373,88 @@ function RoClothes(Player)
 	----------------------------------------------------------------------------------------------------
 	----------------------------------------------------------------------------------------------------
 
+	function Function.convertToJSON(value)
+		if typeof(value) == "Color3" then
+			return {["R"] = value.R, ["G"] = value.G, ["B"] = value.B}
+		elseif typeof(value) == "Vector3" then
+			return {["X"] = value.X, ["Y"] = value.Y, ["Z"] = value.Z}
+		elseif typeof(value) == "EnumItem" then
+			return {["EnumType"] = tostring(value.EnumType), ["Value"] = value.Value}
+		end
+		return value
+	end
+
+	function Function.convertFromJSON(value)
+		if typeof(value) == "table" then
+			if value["R"] and value["G"] and value["B"] then
+				return Color3.new(value.R, value.G, value.B)
+			elseif value["X"] and value["Y"] and value["Z"] then
+				return Vector3.new(value.X, value.Y, value.Z)
+			elseif value["EnumType"] and value["Value"] then
+				return Enum[value.EnumType]:FromValue(value.Value)
+			end
+		end
+		return value,true
+	end
+
+	function Function.JaroSimilarity(original: string, target: string): number
+		local original_len = original:len()
+		local target_len = target:len()
+
+		if (original_len == 0 and target_len == 0) or (original == target) then return 1 end
+
+		local match_distance = (math.floor(math.max(original_len, target_len) / 2)) - 1
+		local original_matches = table.create(original_len, false)
+		local target_matches = table.create(target_len, false)
+
+		local matches = 0
+		local transpositions = 0
+
+		local min = math.min
+		local max = math.max
+		for i = 1, original_len do
+			local _start = max(1, i - match_distance)
+			local _end = min(i + match_distance + 1, target_len)
+
+			for j = _start, _end do
+				if target_matches[j] then
+					continue end
+				if original:sub(i, i) ~= target:sub(j, j)  then
+					continue end
+				original_matches[i] = true
+				target_matches[j] = true
+				matches += 1
+				break
+			end
+		end
+
+		if matches == 0 then
+			return 0
+		end
+
+		local k = 1
+		for i = 1, original_len do
+			if not original_matches[i] then continue end
+
+			while target_matches[k] == false do
+				k += 1
+			end
+
+			if original:sub(i, i) ~= target:sub(k, k) then
+				transpositions += 1
+			end
+			k += 1
+		end
+
+		local similarity = ((matches / original_len) + (matches / target_len) + ((matches - transpositions / 2) / matches)) / 3
+
+		return similarity
+	end
+
+	function Function.JaroDistance(original: string, target: string): number
+		return 1 - Function.JaroSimilarity(original, target)
+	end
+
 	function Function.AttachmentCreate(Character)
 		for Attach, ParentName in pairs(AttachmentParent) do
 			local Base = Character:FindFirstChild(ParentName)
@@ -13027,8 +12638,8 @@ function RoClothes(Player)
 
 		Button.Name = ButtonName
 		Button.Parent = ButtonParent
-		Button.BackgroundColor3 = Color3.fromRGB(48, 25, 52)
-		Button.BorderColor3 = Color3.fromRGB(255, 209, 220)
+		Button.BackgroundColor3 = Color3.fromRGB(6, 0, 76)
+		Button.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		Button.Position = UDim2.new(0.784810185, 0, 0.866666734, 0)
 		Button.Size = UDim2.new(0, 200, 0, 50)
 
@@ -13085,7 +12696,7 @@ function RoClothes(Player)
 
 		Button.Name = ButtonName
 		Button.Parent = ButtonParent
-		Button.BackgroundColor3 = Color3.fromRGB(48, 25, 52)
+		Button.BackgroundColor3 = Color3.fromRGB(6, 0, 76)
 		Button.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		Button.Position = UDim2.new(0.784810185, 0, 0.866666734, 0)
 		Button.Size = UDim2.new(0, 200, 0, 50)
@@ -13688,8 +13299,8 @@ function RoClothes(Player)
 		return IsAdded
 	end
 
-	function Function.HumanoidDescriptionLoader(Character, HumanoidDescription, CharacterAttachment, UseBodyColor, Data, isCatalogUsername, oChar)
-		local AccessoryLoaderModel = Instance.new("Model", game.workspace)
+	function Function.HumanoidDescriptionLoader(Character, HumanoidDescription, CharacterAttachment, UseBodyColor, Data, isCatalogUsername, oChar, DecalCheck)
+		local AccessoryLoaderModel = Instance.new("Model", game)
 		AccessoryLoaderModel:AddTag("RoClothes")
 		local HumanoidAccessoryLoader = Instance.new("Humanoid", AccessoryLoaderModel)
 
@@ -13700,6 +13311,15 @@ function RoClothes(Player)
 			if v:IsA("Accessory") then
 				Function.AccessoryAdd(Character, v, CharacterAttachment, Data)
 			elseif v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") then
+				if DecalCheck then
+					if v:IsA("Shirt") and DecalCheck[1] ~= nil then
+						v.ShirtTemplate = "rbxassetid://".. DecalCheck[1]
+					elseif v:IsA("Pants") and DecalCheck[2] ~= nil then
+						v.PantsTemplate = "rbxassetid://".. DecalCheck[2]
+					elseif v:IsA("ShirtGraphic") and DecalCheck[3] ~= nil then
+						v.Graphic = "rbxassetid://".. DecalCheck[3]
+					end
+				end
 				local OldCloth = Character:FindFirstChildOfClass(v.ClassName)
 
 				if OldCloth then
@@ -13771,6 +13391,10 @@ function RoClothes(Player)
 						if mesh.MeshType == Enum.MeshType.Head then
 							mesh.Scale = Vector3.new(1,1,1)
 						end
+						PlayerData[Data].CurrentPartList.RealtimeUpdateList.SpecialMesh[mesh] = {
+							Base=Character:FindFirstChild("Head"),
+							Size=mesh.Scale,
+						}
 					else
 						local mesh = Instance.new("SpecialMesh",newHead)
 						mesh.MeshId = v.MeshId
@@ -13781,7 +13405,13 @@ function RoClothes(Player)
 					--h.Transparency = 0
 
 					local function newhed(id,texture)
-						local newHead = IS:CreateMeshPartAsync(id, Enum.CollisionFidelity.Box, Enum.RenderFidelity.Performance)
+						local newHead
+						local success = pcall(function()
+							newHead = IS:CreateMeshPartAsync(id, Enum.CollisionFidelity.Box, Enum.RenderFidelity.Performance)
+						end)
+						if not success then
+							newHead = IS:CreateMeshPartAsync("rbxasset://fonts//head.mesh", Enum.CollisionFidelity.Box, Enum.RenderFidelity.Automatic)
+						end
 						newHead.Parent = h
 						local appearance = Instance.new("SurfaceAppearance",newHead)
 						appearance.ColorMap = texture
@@ -13798,11 +13428,11 @@ function RoClothes(Player)
 						newHead.Material = h.Material
 						newHead.Reflectance = h.Reflectance
 						PlayerData[Data].CurrentPartList.Organ["Head"] = newHead
-						PlayerData[Data].CurrentPartList.RealtimeUpdateList.Mesh[newHead] = {Base = newHead}
 
 						local Weld = Instance.new("Weld", newHead)
 						Weld.Part0 = h
 						Weld.Part1 = newHead
+						PlayerData[Data].CurrentPartList.RealtimeUpdateList.Mesh[newHead] = {Base = Character:FindFirstChild("Head"),Size=newHead.Size,CFrame=CFrame.new(0,0,0),CFrame1=CFrame.new(0,0,0),Weld=Weld}
 						return newHead
 					end
 
@@ -13830,11 +13460,12 @@ function RoClothes(Player)
 								PlayerData[Data].CurrentPartList.ParentTransparency[OldFC] = {D = 0}
 							end
 							local d = head:FindFirstChildOfClass("Decal"):Clone()
-							PlayerData[Data].CurrentPartList.ParentTransparency[d] = {D = 1}
+							PlayerData[Data].CurrentPartList.TransparencyLink[d] = {T=h}
 							d.Parent = h
 						elseif OldFC then
 							local o = OldFC:Clone()
 							PlayerData[Data].CurrentPartList.ParentTransparency[o] = {D = 1}
+							PlayerData[Data].CurrentPartList.TransparencyLink[o] = {T=h}
 							o.Parent = h
 						end
 					elseif OldFC then
@@ -13869,7 +13500,7 @@ function RoClothes(Player)
 	function Function.AccessoryLoaderFunction(Character, CharacterAttachment, SelectBundle, Data)
 		local Human = Character:FindFirstChildOfClass("Humanoid")
 
-		local HumanoidDescription = Instance.new("HumanoidDescription", game.workspace)
+		local HumanoidDescription = Instance.new("HumanoidDescription", workspace)
 
 		local IsAdded = Function.HumanoidDescriptionSet(Bundle[SelectBundle]["Accessory"], Bundle[SelectBundle]["Clothes"], HumanoidDescription)
 
@@ -13884,6 +13515,10 @@ function RoClothes(Player)
 	function Function.CatalogLoader(Character, CharacterAttachment, Data, oChar)
 		local Human = Character:FindFirstChildOfClass("Humanoid")
 
+		local DecalInfo
+		if PlayerData[Data].CatalogClothes.DecalClothes == true then
+			DecalInfo = {PlayerData[Data].CatalogClothes.Shirt,PlayerData[Data].CatalogClothes.Pants,PlayerData[Data].CatalogClothes.ShirtGraphic}
+		end
 		if PlayerData[Data].CatalogUsername ~= "" then
 
 			pcall(function()
@@ -13915,7 +13550,7 @@ function RoClothes(Player)
 					HumanoidDescription:SetAccessories(accessories,true)
 				end
 
-				Function.HumanoidDescriptionLoader(Character, HumanoidDescription, CharacterAttachment, true, Data, true, oChar)
+				Function.HumanoidDescriptionLoader(Character, HumanoidDescription, CharacterAttachment, true, Data, true, oChar, DecalInfo)
 			end)
 		end
 		if PlayerData[Data].CatalogOutfitId ~= "" then
@@ -13946,7 +13581,7 @@ function RoClothes(Player)
 					HumanoidDescription:SetAccessories(accessories,true)
 				end
 
-				Function.HumanoidDescriptionLoader(Character, HumanoidDescription, CharacterAttachment, true, Data, true, oChar)
+				Function.HumanoidDescriptionLoader(Character, HumanoidDescription, CharacterAttachment, true, Data, true, oChar, DecalInfo)
 			end)
 		end
 		local HumanoidDescription = Instance.new("HumanoidDescription", game.Workspace)
@@ -13954,7 +13589,7 @@ function RoClothes(Player)
 		local IsAdded = Function.HumanoidDescriptionSet(PlayerData[Data].CatalogAccessory, PlayerData[Data].CatalogClothes, HumanoidDescription)
 
 		if IsAdded == true then
-			Function.HumanoidDescriptionLoader(Character, HumanoidDescription, CharacterAttachment, false, Data)
+			Function.HumanoidDescriptionLoader(Character, HumanoidDescription, CharacterAttachment, false, Data, nil, nil, DecalInfo)
 		else
 			HumanoidDescription:Destroy()
 		end
@@ -14564,7 +14199,7 @@ function RoClothes(Player)
 						end
 					end
 				end
-				local AccessoryLoaderModel = Instance.new("Model", game.workspace)
+				local AccessoryLoaderModel = Instance.new("Model", workspace)
 				AccessoryLoaderModel:AddTag("RoClothes")
 				local HumanoidAccessoryLoader = Instance.new("Humanoid", AccessoryLoaderModel)
 				HumanoidAccessoryLoader:ApplyDescription(HumanoidDescription)
@@ -14584,6 +14219,11 @@ function RoClothes(Player)
 				X = "Z",
 				Y = "X",
 				Z = "Y",
+			}
+			local Rotation = {
+				X = 5,
+				Y = -5,
+				Z = 5
 			}
 
 			local TORSO
@@ -14670,11 +14310,33 @@ function RoClothes(Player)
 				local RIGHTAREOLA = Function.Weld(PartListData["Right Areola Type 4"], Character, Extra, Data)
 				local LEFTNIPPLE = Function.Weld(PartListData["Left Nipple Type 4"], Character, Extra, Data)
 				local RIGHTNIPPLE = Function.Weld(PartListData["Right Nipple Type 4"], Character, Extra, Data)
+				PlayerData[Data].CurrentPartList.TransparencyLink[LEFTAREOLA] = {T=LEFTNIPPLE}
+				PlayerData[Data].CurrentPartList.TransparencyLink[RIGHTAREOLA] = {T=RIGHTNIPPLE}
 
 				PlayerData[Data].CurrentPartList["Organ"]["Left Areola"] = LEFTAREOLA
 				PlayerData[Data].CurrentPartList["Organ"]["Right Areola"] = RIGHTAREOLA
 				PlayerData[Data].CurrentPartList["Organ"]["Left Nipple"] = LEFTNIPPLE
 				PlayerData[Data].CurrentPartList["Organ"]["Right Nipple"] = RIGHTNIPPLE
+			elseif DataDetail.BreastsType == 5 then
+				LEFTBREAST = Function.Weld(PartListData["Left Breast Type 5"], Character, Extra, Data)
+				RIGHTBREAST = Function.Weld(PartListData["Right Breast Type 5"], Character, Extra, Data)
+
+				local LEFTNIPPLE = Function.Weld(PartListData["Left Nipple Type 5"], Character, Extra, Data)
+				local RIGHTNIPPLE = Function.Weld(PartListData["Right Nipple Type 5"], Character, Extra, Data)
+
+				PlayerData[Data].CurrentPartList["Organ"]["Left Nipple"] = LEFTNIPPLE
+				PlayerData[Data].CurrentPartList["Organ"]["Right Nipple"] = RIGHTNIPPLE
+
+				PhysicsRotationOffset = {
+					X = "Y",
+					Y = "X",
+					Z = "Z",
+				}
+				Rotation = {
+					X = 5,
+					Y = 5,
+					Z = 5
+				}
 			end
 
 			PlayerData[Data].CurrentPartList["Organ"]["Left Breast"] = LEFTBREAST
@@ -14762,11 +14424,7 @@ function RoClothes(Player)
 							Z = 0
 						},
 						PhysicsRotationOffset,
-						{
-							X = 5,
-							Y = -5,
-							Z = 5
-						},
+						Rotation,
 						Data
 					)
 					Function.SpringCreate(
@@ -14787,11 +14445,7 @@ function RoClothes(Player)
 							Z = 0
 						},
 						PhysicsRotationOffset,
-						{
-							X = 5,
-							Y = -5,
-							Z = 5
-						},
+						Rotation,
 						Data
 					)
 				end
@@ -14857,10 +14511,128 @@ function RoClothes(Player)
 				end
 			end
 
+			local function transparent(o,v)
+				o:SetAttribute("maxTransparencyRC",v)
+				o.Transparency = v
+			end
+			if DataDetail.TopHP ~= "" then
+				for c, set in pairs(DataDetail.ClothesHP) do
+					if not table.find(DataDetail.CurrentClothes,c) then
+						continue
+					end
+					if set["HP"] == "TopHP" then
+						if set["Inverse"] == true then
+							for i, v in pairs(Clothes[c].Weld) do
+								if DataDetail.CurrentPartList["Clothes"][v] then
+									transparent(DataDetail.CurrentPartList["Clothes"][v],1)
+								end
+							end
+							if Clothes[c].Unvisible then
+								for i, v in pairs(Clothes[c].Unvisible) do
+									if DataDetail.CurrentPartList["Organ"][v] then
+										local t = DataDetail.CurrentPartList["Organ"][v]:GetAttribute("Alpha") or 0
+										transparent(DataDetail.CurrentPartList["Organ"][v],t)
+									end
+								end
+							end
+							if Clothes[c].HPFunction then
+								if typeof(Clothes[c].HPFunction) == "string" then
+									Function[Clothes[c].HPFunction](false,Character,Data)
+								elseif typeof(Clothes[c].HPFunction) == "table" then
+									for i, v in pairs(Clothes[c].HPFunction) do
+										Function[v](false,Character,Data)
+									end
+								end
+							end
+						else
+							for i, v in pairs(Clothes[c].Weld) do
+								if DataDetail.CurrentPartList["Clothes"][v] then
+									local t = DataDetail.CurrentPartList["Clothes"][v]:GetAttribute("Alpha") or 0
+									transparent(DataDetail.CurrentPartList["Clothes"][v],t)
+								end
+							end
+							if Clothes[c].Unvisible then
+								for i, v in pairs(Clothes[c].Unvisible) do
+									if DataDetail.CurrentPartList["Organ"][v] then
+										transparent(DataDetail.CurrentPartList["Organ"][v],1)
+									end
+								end
+							end
+							if Clothes[c].HPFunction then
+								if typeof(Clothes[c].HPFunction) == "string" then
+									Function[Clothes[c].HPFunction](true,Character,Data)
+								elseif typeof(Clothes[c].HPFunction) == "table" then
+									for i, v in pairs(Clothes[c].HPFunction) do
+										Function[v](true,Character,Data)
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+			if DataDetail.BottomHP ~= "" then
+				for c, set in pairs(DataDetail.ClothesHP) do
+					if not table.find(DataDetail.CurrentClothes,c) then
+						continue
+					end
+					if set["HP"] == "BottomHP" then
+						if set["Inverse"] == true then
+							for i, v in pairs(Clothes[c].Weld) do
+								if DataDetail.CurrentPartList["Clothes"][v] then
+									transparent(DataDetail.CurrentPartList["Clothes"][v],1)
+								end
+							end
+							if Clothes[c].Unvisible then
+								for i, v in pairs(Clothes[c].Unvisible) do
+									if DataDetail.CurrentPartList["Organ"][v] then
+										local t = DataDetail.CurrentPartList["Organ"][v]:GetAttribute("Alpha") or 0
+										transparent(DataDetail.CurrentPartList["Organ"][v],t)
+									end
+								end
+							end
+							if Clothes[c].HPFunction then
+								if typeof(Clothes[c].HPFunction) == "string" then
+									Function[Clothes[c].HPFunction](false,Character,Data)
+								elseif typeof(Clothes[c].HPFunction) == "table" then
+									for i, v in pairs(Clothes[c].HPFunction) do
+										Function[v](false,Character,Data)
+									end
+								end
+							end
+						else
+							for i, v in pairs(Clothes[c].Weld) do
+								if DataDetail.CurrentPartList["Clothes"][v] then
+									local t = DataDetail.CurrentPartList["Clothes"][v]:GetAttribute("Alpha") or 0
+									transparent(DataDetail.CurrentPartList["Clothes"][v],t)
+								end
+							end
+							if Clothes[c].Unvisible then
+								for i, v in pairs(Clothes[c].Unvisible) do
+									if DataDetail.CurrentPartList["Organ"][v] then
+										transparent(DataDetail.CurrentPartList["Organ"][v],1)
+									end
+								end
+							end
+							if Clothes[c].HPFunction then
+								if typeof(Clothes[c].HPFunction) == "string" then
+									Function[Clothes[c].HPFunction](true,Character,Data)
+								elseif typeof(Clothes[c].HPFunction) == "table" then
+									for i, v in pairs(Clothes[c].HPFunction) do
+										Function[v](true,Character,Data)
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+
 			if FaceDecal and DataDetail.Face == false then
 				FaceDecal.Transparency = 1
 				DataDetail.CurrentPartList.ParentTransparency[FaceDecal] = {D = 0, T = 1}
 			end
+			task.wait()
 			DataDetail["Cooldown"] = false
 		end
 	end
@@ -14976,6 +14748,11 @@ function RoClothes(Player)
 
 
 	function Function.DragUpdate()
+		if GUIObject.hardcoreGroup.Visible == true and GUIObject.hardcoreGroup.GroupTransparency < 1 then
+			local pos = UIS:GetMouseLocation()
+
+			GUIObject.hardcoreGroup.Position = UDim2.fromOffset(pos.X,pos.Y)
+		end
 		--[[
 		if IsEnterFrame == true and IsMouseDown == true and MouseDownStart and GuiPositionStart then
 			local CurrentPosition = UIS:GetMouseLocation() - MouseDownStart
@@ -14994,9 +14771,9 @@ function RoClothes(Player)
 		for i, v in pairs(GUIObject.ClothesButtonFrame:GetChildren()) do
 			if v:IsA("Frame") then
 				if table.find(PlayerData[SelectPlayer].CurrentClothes, v.Name) then
-					v.BackgroundColor3 = Color3.fromRGB(254, 223, 255)
+					v.BackgroundColor3 = Color3.fromRGB(255, 242, 67)
 				else
-					v.BackgroundColor3 = Color3.fromRGB(48, 25, 52)
+					v.BackgroundColor3 = Color3.fromRGB(6, 0, 76)
 				end 
 
 				if GUIObject.ClothesSearch.Text ~= "" then
@@ -15009,12 +14786,12 @@ function RoClothes(Player)
 		for i, v in pairs(GUIObject.BundlesButtonFrame:GetChildren()) do
 			if v:IsA("Frame") then
 				if v.Name == PlayerData[SelectPlayer].CurrentBundle then
-					v.BackgroundColor3 = Color3.fromRGB(254, 223, 255)
+					v.BackgroundColor3 = Color3.fromRGB(255, 242, 67)
 					if v.Name == "nil" then
 						v:FindFirstChildOfClass("TextButton").Text = "CLEAR?"
 					end
-				elseif v.BackgroundColor3 == Color3.fromRGB(254, 223, 255) then
-					v.BackgroundColor3 = Color3.fromRGB(48, 25, 52)
+				elseif v.BackgroundColor3 == Color3.fromRGB(255, 242, 67) then
+					v.BackgroundColor3 = Color3.fromRGB(6, 0, 76)
 					if v.Name == "nil" then
 						v:FindFirstChildOfClass("TextButton").Text = "nil"
 					end
@@ -15131,21 +14908,51 @@ function RoClothes(Player)
 		end
 
 		if PlayerData[SelectPlayer].RealtimeBodyTransparency then
-			GUIObject.BodyTransparencyButton.TextStrokeColor3 = Color3.new(0,255,0)
+			GUIObject.BodyTransparencyButton.TextStrokeColor3 = Color3.new(0,1,0)
 		else
-			GUIObject.BodyTransparencyButton.TextStrokeColor3 = Color3.new(255,0,0)
+			GUIObject.BodyTransparencyButton.TextStrokeColor3 = Color3.new(1,0,0)
 		end
 
 		if PlayerData[SelectPlayer].HardcoreHP then
-			GUIObject.HardcoreToggle.TextStrokeColor3 = Color3.new(0,255,0)
+			GUIObject.HardcoreToggle.TextStrokeColor3 = Color3.new(0,1,0)
 		else
-			GUIObject.HardcoreToggle.TextStrokeColor3 = Color3.new(255,0,0)
+			GUIObject.HardcoreToggle.TextStrokeColor3 = Color3.new(1,0,0)
 		end
 
 		if PlayerData[SelectPlayer].tailSettings.tailPhysicsEnabled then
-			GUIObject.tailToggleButton.TextStrokeColor3 = Color3.new(0,255,0)
+			GUIObject.tailToggleButton.TextStrokeColor3 = Color3.new(0,1,0)
 		else
-			GUIObject.tailToggleButton.TextStrokeColor3 = Color3.new(255,0,0)
+			GUIObject.tailToggleButton.TextStrokeColor3 = Color3.new(1,0,0)
+		end
+
+		if loadupClosed then
+			GUIObject.closeOptionButton.TextStrokeColor3 = Color3.new(0,1,0)
+		else
+			GUIObject.closeOptionButton.TextStrokeColor3 = Color3.new(1,0,0)
+		end
+
+		if loadupExecute then
+			GUIObject.executeOptionButton.TextStrokeColor3 = Color3.new(0,1,0)
+		else
+			GUIObject.executeOptionButton.TextStrokeColor3 = Color3.new(1,0,0)
+		end
+
+		if Bundle[loadupBundle] then
+			GUIObject.bundleLoadButton.Text = "Loadup Bundle: ".. loadupBundle
+		else
+			GUIObject.bundleLoadButton.Text = "Loadup Bundle: nil"
+		end
+
+		if loadupFPerson == 0 then
+			GUIObject.FPersonLoadupButton.Text = "FPerson Loadup: false"
+		elseif loadupFPerson == 1 then
+			GUIObject.FPersonLoadupButton.Text = "FPerson Loadup: Body & POV"
+		elseif loadupFPerson == 2 then
+			GUIObject.FPersonLoadupButton.Text = "FPerson Loadup: Body"
+		elseif loadupFPerson == 3 then
+			GUIObject.FPersonLoadupButton.Text = "FPerson Loadup: Snappy"
+		elseif loadupFPerson == 4 then
+			GUIObject.FPersonLoadupButton.Text = "FPerson Loadup: Snappy Body"
 		end
 
 		GUIObject.DelayTimeText.Text = PlayerData[SelectPlayer].DelayTime
@@ -15219,6 +15026,170 @@ function RoClothes(Player)
 		end
 	end
 
+
+
+
+	if RS:IsClient() and not RS:IsStudio() then
+		local function toJSON(t)
+			for i, v in pairs(t) do
+				if typeof(v) == "table" then
+					toJSON(v)
+				else
+					t[i] = Function.convertToJSON(v)
+				end
+			end
+		end
+		local function fromJSON(t)
+			for i, v in pairs(t) do
+				local value,original = Function.convertFromJSON(v)
+				t[i] = value
+				if typeof(v) == "table" and original then
+					fromJSON(v)
+				end
+			end
+		end
+
+		if env.makefolder and not env.isfolder("RClothesLerp") then
+			env.makefolder("RClothesLerp")
+		end
+		if env.makefolder and not env.isfolder("RClothesLerp/Bundles") then
+			env.makefolder("RClothesLerp/Bundles")
+		end
+		if env.isfile("RClothesLerp/Settings.json") then
+			local settings = HS:JSONDecode(env.readfile("RClothesLerp/Settings.json"))
+			for i, v in pairs(settings) do
+				settings[i] = Function.convertFromJSON(v)
+			end
+			loadupBundle = settings.loadupBundle
+			loadupExecute = settings.loadupExecute
+			loadupClosed = settings.loadupClosed
+			KEYBIND = settings.KEYBIND or KEYBIND
+			hpKEYBIND = settings.hpKEYBIND or hpKEYBIND
+			dpKEYBIND = settings.dpKEYBIND or dpKEYBIND
+		end
+		if env.isfile("RClothesLerp/BundleLoader.json") then
+			local decode = HS:JSONDecode(env.readfile("RClothesLerp/BundleLoader.json"))
+			fromJSON(decode)
+
+			local bundleAmount = 0
+			for name, bundle in pairs(decode) do
+				bundleAmount += 1
+				bundle["BundleName"] = nil
+				Bundle[name] = bundle
+			end
+			task.spawn(function() -- compile overtime --
+				local timeOut = 300
+				local amount = 0
+				local filesFound = env.listfiles("RClothesLerp/Bundles")
+				if #filesFound <= 0 then
+					repeat
+						task.wait()
+						filesFound = env.listfiles("RClothesLerp/Bundles")
+						timeOut -= 1
+					until timeOut <= 0 or #filesFound > 0
+				end
+				local tab = {}
+				for i, v in pairs(filesFound) do
+					if env.isfile(v) then
+						local b = HS:JSONDecode(env.readfile(v))
+						local storedName = b.BundleName
+						b["BundleName"] = nil
+
+						fromJSON(b)
+
+						Bundle[storedName] = b
+						local asset = {}
+						local function transferTable(n,isTable)
+							local newTable = {}
+							for i, v in pairs(n) do
+								if isTable then
+									if typeof(v) == "table" then
+										newTable[i] = transferTable(v,true)
+									else
+										newTable[i] = v
+									end
+								else
+									if typeof(v) == "table" then
+										asset[i] = transferTable(v,true)
+									else
+										asset[i] = v
+									end
+								end
+							end
+							return newTable
+						end
+						transferTable(b)
+						tab[storedName] = asset
+						if not decode[storedName] then
+						end
+					end
+				end
+
+				if #filesFound > 0 then
+					toJSON(tab)
+					env.writefile("RClothesLerp/BundleLoader.json", HS:JSONEncode(tab))
+				elseif env.isfile("RClothesLerp/BundleLoader.json") then
+					warn("No bundles. Is this an error?")
+					env.delfile("RClothesLerp/BundleLoader.json")
+				end
+			end)
+		else
+			local filesFound = env.listfiles("RClothesLerp/Bundles")
+			local t = {}
+			for i, v in pairs(filesFound) do
+				if env.isfile(v) then
+					local b = HS:JSONDecode(env.readfile(v))
+					local storedName = b.BundleName
+					b["BundleName"] = nil
+
+					fromJSON(b)
+					Bundle[storedName] = b
+					local asset = {}
+					for i, v in pairs(b) do
+						asset[i] = v
+					end
+					t[storedName] = asset
+				end
+			end
+
+			if #filesFound > 0 then
+				toJSON(t)
+				env.writefile("RClothesLerp/BundleLoader.json", HS:JSONEncode(t))
+			end
+		end
+	elseif RS:IsStudio() then
+		if script:FindFirstChild("loadupSettings") then
+			local loadupSettings = require(script.loadupSettings)
+			if loadupSettings.loadupBundle then
+				loadupBundle = loadupSettings.loadupBundle
+			end
+			if loadupSettings.loadupExecute then
+				loadupExecute = loadupSettings.loadupExecute
+			end
+			if loadupSettings.loadupClosed then
+				loadupClosed = loadupSettings.loadupClosed
+			end
+			if loadupSettings.loadupFPerson then
+				loadupFPerson = loadupSettings.loadupFPerson
+			end
+			if loadupSettings.KEYBIND then
+				KEYBIND = loadupSettings.KEYBIND
+			end
+			if loadupSettings.hpKEYBIND then
+				hpKEYBIND = loadupSettings.hpKEYBIND
+			end
+			if loadupSettings.dpKEYBIND then
+				dpKEYBIND = loadupSettings.dpKEYBIND
+			end
+		end
+		if script:FindFirstChild("myBundles") then
+			local myBundles = require(script.myBundles)
+			for i, v in pairs(myBundles) do
+				Bundle[i] = v
+			end
+		end
+	end
+
 	--[[
 	--------------------------------------------------------------------------------------------------------------
 	--------------------------------------------------------------------------------------------------------------
@@ -15272,6 +15243,9 @@ function RoClothes(Player)
 
 	local tap = false
 	local cd = false
+
+	local hardcoreGUITween
+	local repairTween
 	local UISBeganConnect = UIS.InputBegan:Connect(function(Keycode, Process)
 		if Process then return end
 
@@ -15292,52 +15266,175 @@ function RoClothes(Player)
 			if Keycode.KeyCode == hpKEYBIND and cd == false then
 				local LP = game:GetService("Players").LocalPlayer
 				local data = PlayerData[LP.Name]
-				if LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") and data 
-					and data["HardcoreHP"] == true and (data["TopHP"] ~= "" or data["BottomHP"] ~= "") then
-					if data["Healing"] == false then
+				if LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") and data then 
+					if data["HardcoreHP"] == true and (data["TopHP"] ~= "" or data["BottomHP"] ~= "") then
+						if data["Healing"] == false then
+
+							GUIObject.hardcoreGroup.Visible = true
+							if hardcoreGUITween and hardcoreGUITween.PlaybackState == Enum.PlaybackState.Playing then
+								hardcoreGUITween:Cancel()
+							end
+							hardcoreGUITween = TS:Create(GUIObject.hardcoreGroup,TweenInfo.new(.1,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{GroupTransparency = 0})
+							hardcoreGUITween:Play()
+
+							task.delay(0,function()
+								Function.DragUpdate()
+							end)
+							data["Healing"] = true
+							cd = true
+							tap = true
+							task.wait(.3)
+							cd = false
+							tap = false
+							if data["Healing"] == true and (data["SavedTopHP"] < data["TopHP"] or data["SavedBottomHP"] < data["BottomHP"]) then
+								local healTime = 0
+								local timeAccumulated = 0
+								local totalTime = 0
+								if data["TopHP"] ~= "" then
+									healTime += math.max((data["TopHP"]/math.max(data["SavedTopHP"],1))*0.04,.5)
+								end
+								if data["BottomHP"] ~= "" then
+									healTime += math.max((data["BottomHP"]/math.max(data["SavedBottomHP"],1))*0.04,.5)
+								end
+
+								GUIObject.repairDisplay.Color = ColorSequence.new(
+									{ColorSequenceKeypoint.new(0,Color3.new(1,1,1)),
+										ColorSequenceKeypoint.new(0.00001,Color3.new(0, 0, 0)),
+										ColorSequenceKeypoint.new(1,Color3.new(0, 0, 0))}
+								)
+								GUIObject.repairBar.Size = UDim2.fromScale(.2,.2)
+								GUIObject.repairBar.ImageTransparency = 1
+								GUIObject.repairBar.Visible = true
+								if repairTween and repairTween.PlaybackState == Enum.PlaybackState.Playing then
+									repairTween:Cancel()
+								end
+								repairTween = TS:Create(GUIObject.repairBar,TweenInfo.new(.3,Enum.EasingStyle.Sine,Enum.EasingDirection.Out),{Size = UDim2.fromScale(.5,.5),ImageTransparency=.2})
+								repairTween:Play()
+								repeat
+									GUIObject.repairBar.Visible = true
+									if data["SavedTopHP"] >= data["TopHP"] and data["SavedBottomHP"] >= data["BottomHP"] then
+										data["Healing"] = false
+									end
+									local focus
+									local timeRequired
+									if data["BottomHP"] ~= "" and (data["SavedBottomHP"] <= 0 or data["SavedTopHP"]/data["TopHP"] >= data["SavedBottomHP"]/data["BottomHP"]) then
+										focus = "BottomHP"
+										timeRequired = math.max((data["BottomHP"]/math.max(data["SavedBottomHP"],1))*0.04,.5)
+									elseif data["TopHP"] ~= "" and (data["SavedTopHP"] <= 0 or data["SavedTopHP"]/data["TopHP"] < data["SavedBottomHP"]/data["BottomHP"]) then
+										focus = "TopHP"
+										timeRequired = math.max((data["TopHP"]/math.max(data["SavedTopHP"],1))*0.04,.5)
+									end
+									local t = task.wait()
+									timeAccumulated += t
+									totalTime += t
+									GUIObject.repairDisplay.Offset = Vector2.new(timeAccumulated/timeRequired,0)
+									if timeAccumulated >= timeRequired then
+										timeAccumulated = 0
+										if focus == "TopHP" then
+											data["SavedTopHP"]=data["TopHP"]
+										else
+											data["SavedBottomHP"]=data["BottomHP"]
+										end
+									end
+								until data["Healing"] == false
+								if GUIObject.repairDisplay.Color == ColorSequence.new(
+									{ColorSequenceKeypoint.new(0,Color3.new(1,1,1)),
+										ColorSequenceKeypoint.new(0.00001,Color3.new(0, 0, 0)),
+										ColorSequenceKeypoint.new(1,Color3.new(0, 0, 0))}
+									) then
+									repairTween = TS:Create(GUIObject.repairBar,TweenInfo.new(.1,Enum.EasingStyle.Sine,Enum.EasingDirection.In),{Size = UDim2.fromScale(.2,.2),ImageTransparency=1})
+									repairTween:Play()
+								end
+							end
+						end
+					elseif data["HardcoreHP"] == false and (data["TopHP"] ~= "" or data["BottomHP"] ~= "") then
+						GUIObject.hardcoreGroup.Visible = true
+						if hardcoreGUITween ~= nil and hardcoreGUITween.PlaybackState == Enum.PlaybackState.Playing then
+							hardcoreGUITween:Cancel()
+						end
+						hardcoreGUITween = TS:Create(GUIObject.hardcoreGroup,TweenInfo.new(.1,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{GroupTransparency = 0})
+						hardcoreGUITween:Play()
 						data["Healing"] = true
 						cd = true
-						tap = true
-						task.wait(.25)
+						task.wait(.3)
 						cd = false
-						tap = false
-						if data["Healing"] == true and (data["SavedTopHP"] < data["TopHP"] or data["SavedBottomHP"] < data["BottomHP"]) then
-							local healTime = 0
-							local timeAccumulated = 0
-							local totalTime = 0
-							if data["TopHP"] ~= "" then
-								healTime += (data["TopHP"]/math.max(data["SavedTopHP"],1))*0.03
-							end
-							if data["BottomHP"] ~= "" then
-								healTime += (data["BottomHP"]/math.max(data["SavedBottomHP"],1))*0.03
-							end
-							repeat
-								if LP.Character.Humanoid.Health < data["SavedPreviousHP"] then
-									data["Healing"] = false
-								end
-								local focus
-								local timeRequired
-								if data["BottomHP"] ~= "" and (data["SavedBottomHP"] <= 0 or data["SavedTopHP"]/data["TopHP"] >= data["SavedBottomHP"]/data["BottomHP"]) then
-									focus = "BottomHP"
-									timeRequired = (data["BottomHP"]/math.max(data["SavedBottomHP"],1))*0.03
-								elseif data["TopHP"] ~= "" and (data["SavedTopHP"] <= 0 or data["SavedTopHP"]/data["TopHP"] < data["SavedBottomHP"]/data["BottomHP"]) then
-									focus = "TopHP"
-									timeRequired = (data["TopHP"]/math.max(data["SavedTopHP"],1))*0.03
-								end
-								local t = task.wait()
-								timeAccumulated += t
-								totalTime += t
-								-- TODO: u gotta add a progress bar & thingy to show hp
-								if timeAccumulated >= timeRequired then
-									timeAccumulated = 0
-									if focus == "TopHP" then
-										data["SavedTopHP"]=data["TopHP"]
-									else
-										data["SavedBottomHP"]=data["BottomHP"]
-									end
-								end
-							until data["Healing"] == false
+					end
+				end
+			end
+		end
+		if dpKeybindDetect == true then
+			dpKEYBIND = Keycode.KeyCode
+			--GUIObject.KeybindButton.Text = string.sub(tostring(hpKEYBIND), 14, #tostring(hpKEYBIND))
+			dpKeybindDetect = false
+		elseif Keycode.KeyCode == dpKEYBIND and cd == false then
+			local LP = game:GetService("Players").LocalPlayer
+			local data = PlayerData[LP.Name]
+			if LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") and data then 
+				if data["HardcoreHP"] == true and (data["TopHP"] ~= "" or data["BottomHP"] ~= "") then
+					if data["Healing"] == false then
+						cd = true
+
+						GUIObject.hardcoreGroup.Visible = true
+						if hardcoreGUITween and hardcoreGUITween.PlaybackState == Enum.PlaybackState.Playing then
+							hardcoreGUITween:Cancel()
 						end
+						hardcoreGUITween = TS:Create(GUIObject.hardcoreGroup,TweenInfo.new(.1,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{GroupTransparency = 0})
+						hardcoreGUITween:Play()
+
+						task.delay(0,function()
+							Function.DragUpdate()
+						end)
+						cd = true
+						data["Healing"] = true
+
+						GUIObject.repairDisplay.Color = ColorSequence.new(
+							{ColorSequenceKeypoint.new(0,Color3.new(1, 0.3, 0.3)),
+								ColorSequenceKeypoint.new(0.00001,Color3.new(0, 0, 0)),
+								ColorSequenceKeypoint.new(1,Color3.new(0, 0, 0))}
+						)
+						GUIObject.repairBar.Size = UDim2.fromScale(.2,.2)
+						GUIObject.repairBar.ImageTransparency = 1
+						GUIObject.repairBar.Visible = true
+						if repairTween and repairTween.PlaybackState == Enum.PlaybackState.Playing then
+							repairTween:Cancel()
+						end
+						repairTween = TS:Create(GUIObject.repairBar,TweenInfo.new(.3,Enum.EasingStyle.Sine,Enum.EasingDirection.Out),{Size = UDim2.fromScale(.5,.5),ImageTransparency=.2})
+						repairTween:Play()
+
+						local timeAccumulated = 0
+						repeat
+							GUIObject.repairBar.Visible = true
+							if data["SavedTopHP"] <= 0 and data["SavedBottomHP"] <= 0 then
+								data["Healing"] = false
+							end
+							local focus
+							local timeRequired = 1
+							if data["TopHP"] ~= "" and data["SavedTopHP"]/data["TopHP"] > 0 then
+								focus = "TopHP"
+							elseif data["BottomHP"] ~= "" and data["SavedBottomHP"]/data["BottomHP"] > 0 then
+								focus = "BottomHP"
+							end
+							local t = task.wait()
+							timeAccumulated += t
+							GUIObject.repairDisplay.Offset = Vector2.new(timeAccumulated/timeRequired,0)
+							if timeAccumulated >= timeRequired then
+								timeAccumulated = 0
+								if focus == "TopHP" then
+									data["SavedTopHP"]=0
+								else
+									data["SavedBottomHP"]=0
+								end
+							end
+						until data["Healing"] == false
+						if GUIObject.repairDisplay.Color == ColorSequence.new(
+							{ColorSequenceKeypoint.new(0,Color3.new(1, 0.3, 0.3)),
+								ColorSequenceKeypoint.new(0.00001,Color3.new(0, 0, 0)),
+								ColorSequenceKeypoint.new(1,Color3.new(0, 0, 0))}
+							) then
+							repairTween = TS:Create(GUIObject.repairBar,TweenInfo.new(.1,Enum.EasingStyle.Sine,Enum.EasingDirection.In),{Size = UDim2.fromScale(.2,.2),ImageTransparency=1})
+							repairTween:Play()
+						end
+						cd = false
 					end
 				end
 			end
@@ -15347,12 +15444,25 @@ function RoClothes(Player)
 	local UISEndedConnect = UIS.InputEnded:Connect(function(Keycode,Process)
 		if Process then return end
 
-		if Keycode.KeyCode == hpKEYBIND then
+		if Keycode.KeyCode == hpKEYBIND or Keycode.KeyCode == dpKEYBIND then
 			local LP = game:GetService("Players").LocalPlayer
 			local data = PlayerData[LP.Name]
-			if LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") and data and data["HardcoreHP"] == true then
-				if data["Healing"] == true then
-					data["Healing"] = false
+			if LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") and data then
+				if data.HardcoreHP == true or (data["TopHP"] ~= "" or data["BottomHP"] ~= "") then
+					if data["Healing"] == true then
+						data["Healing"] = false
+					end
+					if GUIObject.hardcoreGroup.GroupTransparency < 1 then
+						task.delay(.5,function()
+							if tap == false and data["Healing"] == false then
+								if hardcoreGUITween ~= nil and hardcoreGUITween.PlaybackState == Enum.PlaybackState.Playing then
+									hardcoreGUITween:Cancel()
+								end
+								hardcoreGUITween = TS:Create(GUIObject.hardcoreGroup,TweenInfo.new(1,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{GroupTransparency = 1})
+								hardcoreGUITween:Play()
+							end
+						end)
+					end
 				end
 			end
 		end
@@ -15401,7 +15511,7 @@ function RoClothes(Player)
 
 				if lP and lP.Character then
 					local char = lP.Character
-					if char:FindFirstChild("Head") then
+					if char:FindFirstChild("Head") and char:FindFirstChild("HumanoidRootPart") then
 						local hed = char:WaitForChild("Head")
 						local rootpart = char:WaitForChild("HumanoidRootPart")
 						local torso = char:FindFirstChild("Torso") or rootpart
@@ -15485,11 +15595,11 @@ function RoClothes(Player)
 
 					if game:GetService("Players"):FindFirstChild(PlayerName) then
 						local p = game:GetService("Players"):FindFirstChild(PlayerName)
-						if p.Character then
-							local c = p.Character
-							local h = c:FindFirstChildOfClass("Humanoid")
+						if p.Character and p.Character.PrimaryPart then
+							local chr = p.Character
+							local h = chr:FindFirstChildOfClass("Humanoid")
 							if Method == 2 and Method2CharacterFolder:FindFirstChild(PlayerName) then
-								c = Method2CharacterFolder[PlayerName]
+								chr = Method2CharacterFolder[PlayerName]
 							end
 							local PData = PlayerData[PlayerName]
 							if h and PData.Cooldown == false and PData.Character then
@@ -15506,14 +15616,14 @@ function RoClothes(Player)
 										PData.TopRipped = true
 
 										if UIS.KeyboardEnabled then
-											local audio = Instance.new("Sound",c.PrimaryPart)
+											local audio = Instance.new("Sound",chr.PrimaryPart)
 											audio.SoundId = "rbxasset://RClothesContent/Sound/Tear/tear".. math.random(1,3) ..".mp3"
 											audio.Volume = 0.75*PData.Volume
 											audio:Play()
 											game:GetService("Debris"):AddItem(audio,3)
 										else
 											local sounds = {9113827650,9113827551,9113833815}
-											local audio = Instance.new("Sound",c.PrimaryPart)
+											local audio = Instance.new("Sound",chr.PrimaryPart)
 											audio.SoundId = "rbxassetid://"..  sounds[math.random(1,#sounds)]
 											audio.Volume = 0.75*PData.Volume
 											audio:Play()
@@ -15521,7 +15631,7 @@ function RoClothes(Player)
 										end
 
 										if PData.TearParticles == true then
-											local particle = Instance.new("ParticleEmitter",c:FindFirstChild("HumanoidRootPart"))
+											local particle = Instance.new("ParticleEmitter",chr:FindFirstChild("HumanoidRootPart"))
 											particle.Enabled = false
 											particle.Texture = "rbxassetid://386425736"
 											particle.Size = NumberSequence.new(
@@ -15549,6 +15659,61 @@ function RoClothes(Player)
 											game:GetService("Debris"):AddItem(particle,3)
 										end
 
+										for c, set in pairs(PData.ClothesHP) do
+											if not table.find(PData.CurrentClothes,c) then
+												continue
+											end
+											if set["HP"] == "TopHP" then
+												if set["Inverse"] == false then
+													for i, v in pairs(Clothes[c].Weld) do
+														if PData.CurrentPartList["Clothes"][v] then
+															transparent(PData.CurrentPartList["Clothes"][v],1)
+														end
+													end
+													if Clothes[c].Unvisible then
+														for i, v in pairs(Clothes[c].Unvisible) do
+															if PData.CurrentPartList["Organ"][v] then
+																local t = PData.CurrentPartList["Organ"][v]:GetAttribute("Alpha") or 0
+																transparent(PData.CurrentPartList["Organ"][v],t)
+															end
+														end
+													end
+													if Clothes[c].HPFunction then
+														if typeof(Clothes[c].HPFunction) == "string" then
+															Function[Clothes[c].HPFunction](false,chr,PlayerName)
+														elseif typeof(Clothes[c].HPFunction) == "table" then
+															for i, v in pairs(Clothes[c].HPFunction) do
+																Function[v](false,chr,PlayerName)
+															end
+														end
+													end
+												else
+													for i, v in pairs(Clothes[c].Weld) do
+														if PData.CurrentPartList["Clothes"][v] then
+															local t = PData.CurrentPartList["Clothes"][v]:GetAttribute("Alpha") or 0
+															transparent(PData.CurrentPartList["Clothes"][v],t)
+														end
+													end
+													if Clothes[c].Unvisible then
+														for i, v in pairs(Clothes[c].Unvisible) do
+															if PData.CurrentPartList["Organ"][v] then
+																transparent(PData.CurrentPartList["Organ"][v],1)
+															end
+														end
+													end
+													if Clothes[c].HPFunction then
+														if typeof(Clothes[c].HPFunction) == "string" then
+															Function[Clothes[c].HPFunction](true,chr,PlayerName)
+														elseif typeof(Clothes[c].HPFunction) == "table" then
+															for i, v in pairs(Clothes[c].HPFunction) do
+																Function[v](true,chr,PlayerName)
+															end
+														end
+													end
+												end
+											end
+										end
+										--[[
 										if PData.CurrentPartList["Organ"]["Left Arm"]:FindFirstChildOfClass("SurfaceAppearance") then
 											PData.CurrentPartList["Organ"]["Left Arm"]:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
 										end
@@ -15560,10 +15725,10 @@ function RoClothes(Player)
 										end
 										if PData.HPClothes.Shirt ~= "" and not tonumber(PData.HPClothes.Shirt) then
 											if not PData.HPClothes.Pants then
-												Function.ShirtTexture(PData.CurrentPartList["Organ"]["Torso"],c,{Shirt = PData.HPClothes.Shirt},PlayerName)
+												Function.ShirtTexture(PData.CurrentPartList["Organ"]["Torso"],chr,{Shirt = PData.HPClothes.Shirt},PlayerName)
 											end
-											Function.ShirtTexture(PData.CurrentPartList["Organ"]["Left Arm"],c,{Shirt = PData.HPClothes.Shirt},PlayerName)
-											Function.ShirtTexture(PData.CurrentPartList["Organ"]["Right Arm"],c,{Shirt = PData.HPClothes.Shirt},PlayerName)
+											Function.ShirtTexture(PData.CurrentPartList["Organ"]["Left Arm"],chr,{Shirt = PData.HPClothes.Shirt},PlayerName)
+											Function.ShirtTexture(PData.CurrentPartList["Organ"]["Right Arm"],chr,{Shirt = PData.HPClothes.Shirt},PlayerName)
 										end
 
 										if PData.CurrentPartList["Organ"]["Left Breast"] then
@@ -15599,7 +15764,7 @@ function RoClothes(Player)
 										if PData.CurrentPartList["Clothes"]["Right Butt Shirt Method2"] then
 											transparent(PData.CurrentPartList["Clothes"]["Left Butt Shirt Method2"],1)
 											transparent(PData.CurrentPartList["Clothes"]["Right Butt Shirt Method2"],1)
-										end
+										end]]
 									end
 								elseif PData.TopHP ~= "" and 
 									(PData.HardcoreHP == false and h.MaxHealth-h.Health < PData.TopHP or
@@ -15609,14 +15774,14 @@ function RoClothes(Player)
 										PData.TopRipped = false
 
 										if UIS.KeyboardEnabled then
-											local audio = Instance.new("Sound",c.PrimaryPart)
+											local audio = Instance.new("Sound",chr.PrimaryPart)
 											audio.SoundId = "rbxasset://RClothesContent/Sound/Heal/heal".. math.random(1,4) ..".mp3"
 											audio.Volume = 2.5*PData.Volume
 											audio:Play()
 											game:GetService("Debris"):AddItem(audio,3)
 										else
 											local sounds = {9113824422,9119138453,9113384209,9113824860}
-											local audio = Instance.new("Sound",c.PrimaryPart)
+											local audio = Instance.new("Sound",chr.PrimaryPart)
 											audio.SoundId = "rbxassetid://"..  sounds[math.random(1,#sounds)]
 											audio.Volume = 2.5*PData.Volume
 											audio:Play()
@@ -15624,7 +15789,7 @@ function RoClothes(Player)
 										end
 
 										if PData.HealParticles == true then
-											local particle = Instance.new("ParticleEmitter",c:FindFirstChild("HumanoidRootPart"))
+											local particle = Instance.new("ParticleEmitter",chr:FindFirstChild("HumanoidRootPart"))
 											particle.Enabled = false
 											particle.Texture = "rbxassetid://16291625893"
 											particle.LightEmission = 1
@@ -15651,6 +15816,61 @@ function RoClothes(Player)
 											game:GetService("Debris"):AddItem(particle,3)
 										end
 
+										for c, set in pairs(PData.ClothesHP) do
+											if not table.find(PData.CurrentClothes,c) then
+												continue
+											end
+											if set["HP"] == "TopHP" then
+												if set["Inverse"] == true then
+													for i, v in pairs(Clothes[c].Weld) do
+														if PData.CurrentPartList["Clothes"][v] then
+															transparent(PData.CurrentPartList["Clothes"][v],1)
+														end
+													end
+													if Clothes[c].Unvisible then
+														for i, v in pairs(Clothes[c].Unvisible) do
+															if PData.CurrentPartList["Organ"][v] then
+																local t = PData.CurrentPartList["Organ"][v]:GetAttribute("Alpha") or 0
+																transparent(PData.CurrentPartList["Organ"][v],t)
+															end
+														end
+													end
+													if Clothes[c].HPFunction then
+														if typeof(Clothes[c].HPFunction) == "string" then
+															Function[Clothes[c].HPFunction](false,chr,PlayerName)
+														elseif typeof(Clothes[c].HPFunction) == "table" then
+															for i, v in pairs(Clothes[c].HPFunction) do
+																Function[v](false,chr,PlayerName)
+															end
+														end
+													end
+												else
+													for i, v in pairs(Clothes[c].Weld) do
+														if PData.CurrentPartList["Clothes"][v] then
+															local t = PData.CurrentPartList["Clothes"][v]:GetAttribute("Alpha") or 0
+															transparent(PData.CurrentPartList["Clothes"][v],t)
+														end
+													end
+													if Clothes[c].Unvisible then
+														for i, v in pairs(Clothes[c].Unvisible) do
+															if PData.CurrentPartList["Organ"][v] then
+																transparent(PData.CurrentPartList["Organ"][v],1)
+															end
+														end
+													end
+													if Clothes[c].HPFunction then
+														if typeof(Clothes[c].HPFunction) == "string" then
+															Function[Clothes[c].HPFunction](true,chr,PlayerName)
+														elseif typeof(Clothes[c].HPFunction) == "table" then
+															for i, v in pairs(Clothes[c].HPFunction) do
+																Function[v](true,chr,PlayerName)
+															end
+														end
+													end
+												end
+											end
+										end
+										--[[
 										if PData.CurrentPartList["Organ"]["Left Arm"]:FindFirstChildOfClass("SurfaceAppearance") then
 											PData.CurrentPartList["Organ"]["Left Arm"]:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
 										end
@@ -15658,14 +15878,14 @@ function RoClothes(Player)
 											PData.CurrentPartList["Organ"]["Right Arm"]:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
 										end
 										if PData.CurrentPartList["Clothes"]["Torso Shirt"] then
-											transparent(PData.CurrentPartList["Clothes"]["Torso Shirt"],0)
+											transparent(PData.CurrentPartList["Clothes"]["Torso Shirt"],PData.CurrentPartList["Clothes"]["Torso Shirt"]:GetAttribute("Alpha") or 0)
 										end
-										if (not c:FindFirstChildOfClass("Pants") or not PData.HPClothes.Pants) and PData.CurrentPartList["Organ"]["Torso"]:FindFirstChildOfClass("SurfaceAppearance") then
+										if (not chr:FindFirstChildOfClass("Pants") or not PData.HPClothes.Pants) and PData.CurrentPartList["Organ"]["Torso"]:FindFirstChildOfClass("SurfaceAppearance") then
 											PData.CurrentPartList["Organ"]["Torso"]:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
 										end
-										if c:FindFirstChildOfClass("Shirt") then
-											Function.ShirtTexture(PData.CurrentPartList["Organ"]["Left Arm"],c,{Shirt = c:FindFirstChildOfClass("Shirt")},PlayerName)
-											Function.ShirtTexture(PData.CurrentPartList["Organ"]["Right Arm"],c,{Shirt = c:FindFirstChildOfClass("Shirt")},PlayerName)
+										if chr:FindFirstChildOfClass("Shirt") then
+											Function.ShirtTexture(PData.CurrentPartList["Organ"]["Left Arm"],chr,{Shirt = chr:FindFirstChildOfClass("Shirt")},PlayerName)
+											Function.ShirtTexture(PData.CurrentPartList["Organ"]["Right Arm"],chr,{Shirt = chr:FindFirstChildOfClass("Shirt")},PlayerName)
 										end
 
 										if PData.CurrentPartList["Organ"]["Left Breast"] then
@@ -15691,8 +15911,8 @@ function RoClothes(Player)
 										if PData.CurrentPartList["Clothes"]["Breasts Shirt"] then
 											transparent(PData.CurrentPartList["Clothes"]["Left Breast 2"],0)
 											transparent(PData.CurrentPartList["Clothes"]["Right Breast 2"],0)
-											transparent(PData.CurrentPartList["Clothes"]["Breasts Shirt"],0)
-											transparent(PData.CurrentPartList["Clothes"]["Breasts Pants"],0)
+											transparent(PData.CurrentPartList["Clothes"]["Breasts Shirt"],PData.CurrentPartList["Clothes"]["Breasts Shirt"]:GetAttribute("Alpha") or 0)
+											transparent(PData.CurrentPartList["Clothes"]["Breasts Pants"],PData.CurrentPartList["Clothes"]["Breasts Pants"]:GetAttribute("Alpha") or 0)
 										end
 										if PData.CurrentPartList["Clothes"]["Right Butt Shirt"] then
 											transparent(PData.CurrentPartList["Clothes"]["Left Butt Shirt"],PData.CurrentPartList["Clothes"]["Left Butt Shirt"]:GetAttribute("Alpha") or 0)
@@ -15701,7 +15921,7 @@ function RoClothes(Player)
 										if PData.CurrentPartList["Clothes"]["Right Butt Shirt Method2"] then
 											transparent(PData.CurrentPartList["Clothes"]["Left Butt Shirt Method2"],PData.CurrentPartList["Clothes"]["Left Butt Shirt Method2"]:GetAttribute("Alpha") or 0)
 											transparent(PData.CurrentPartList["Clothes"]["Right Butt Shirt Method2"],PData.CurrentPartList["Clothes"]["Right Butt Shirt Method2"]:GetAttribute("Alpha") or 0)
-										end
+										end]]
 									end
 								end
 								-- bottom --
@@ -15713,14 +15933,14 @@ function RoClothes(Player)
 										PData.BottomRipped = true
 
 										if UIS.KeyboardEnabled then
-											local audio = Instance.new("Sound",c.PrimaryPart)
+											local audio = Instance.new("Sound",chr.PrimaryPart)
 											audio.SoundId = "rbxasset://RClothesContent/Sound/Tear/tear".. math.random(1,3) ..".mp3"
 											audio.Volume = 0.75*PData.Volume
 											audio:Play()
 											game:GetService("Debris"):AddItem(audio,3)
 										else
 											local sounds = {9113827650,9113827551,9113833815}
-											local audio = Instance.new("Sound",c.PrimaryPart)
+											local audio = Instance.new("Sound",chr.PrimaryPart)
 											audio.SoundId = "rbxassetid://"..  sounds[math.random(1,#sounds)]
 											audio.Volume = 0.75*PData.Volume
 											audio:Play()
@@ -15728,7 +15948,7 @@ function RoClothes(Player)
 										end
 
 										if PData.TearParticles == true then
-											local particle = Instance.new("ParticleEmitter",c:FindFirstChild("HumanoidRootPart"))
+											local particle = Instance.new("ParticleEmitter",chr:FindFirstChild("HumanoidRootPart"))
 											particle.Enabled = false
 											particle.Texture = "rbxassetid://386425736"
 											particle.Size = NumberSequence.new(
@@ -15756,7 +15976,62 @@ function RoClothes(Player)
 											game:GetService("Debris"):AddItem(particle,3)
 										end
 
-										if PData.CurrentPartList["Organ"]["Left Leg"]:FindFirstChildOfClass("SurfaceAppearance") then
+										for c, set in pairs(PData.ClothesHP) do
+											if not table.find(PData.CurrentClothes,c) then
+												continue
+											end
+											if set["HP"] == "BottomHP" then
+												if set["Inverse"] == false then
+													for i, v in pairs(Clothes[c].Weld) do
+														if PData.CurrentPartList["Clothes"][v] then
+															transparent(PData.CurrentPartList["Clothes"][v],1)
+														end
+													end
+													if Clothes[c].Unvisible then
+														for i, v in pairs(Clothes[c].Unvisible) do
+															if PData.CurrentPartList["Organ"][v] then
+																local t = PData.CurrentPartList["Organ"][v]:GetAttribute("Alpha") or 0
+																transparent(PData.CurrentPartList["Organ"][v],t)
+															end
+														end
+													end
+													if Clothes[c].HPFunction then
+														if typeof(Clothes[c].HPFunction) == "string" then
+															Function[Clothes[c].HPFunction](false,chr,PlayerName)
+														elseif typeof(Clothes[c].HPFunction) == "table" then
+															for i, v in pairs(Clothes[c].HPFunction) do
+																Function[v](false,chr,PlayerName)
+															end
+														end
+													end
+												else
+													for i, v in pairs(Clothes[c].Weld) do
+														if PData.CurrentPartList["Clothes"][v] then
+															local t = PData.CurrentPartList["Clothes"][v]:GetAttribute("Alpha") or 0
+															transparent(PData.CurrentPartList["Clothes"][v],t)
+														end
+													end
+													if Clothes[c].Unvisible then
+														for i, v in pairs(Clothes[c].Unvisible) do
+															if PData.CurrentPartList["Organ"][v] then
+																transparent(PData.CurrentPartList["Organ"][v],1)
+															end
+														end
+													end
+													if Clothes[c].HPFunction then
+														if typeof(Clothes[c].HPFunction) == "string" then
+															Function[Clothes[c].HPFunction](true,chr,PlayerName)
+														elseif typeof(Clothes[c].HPFunction) == "table" then
+															for i, v in pairs(Clothes[c].HPFunction) do
+																Function[v](true,chr,PlayerName)
+															end
+														end
+													end
+												end
+											end
+										end
+
+										--[[if PData.CurrentPartList["Organ"]["Left Leg"]:FindFirstChildOfClass("SurfaceAppearance") then
 											PData.CurrentPartList["Organ"]["Left Leg"]:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
 										end
 										if PData.CurrentPartList["Organ"]["Right Leg"]:FindFirstChildOfClass("SurfaceAppearance") then
@@ -15772,12 +16047,12 @@ function RoClothes(Player)
 											PData.CurrentPartList["Organ"]["Torso"]:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
 										end
 										if PData.HPClothes.Pants ~= "" and not tonumber(PData.HPClothes.Pants) then
-											Function.PantsTexture(PData.CurrentPartList["Organ"]["Torso"],c,{Pants = PData.HPClothes.Pants},PlayerName)
-											Function.PantsTexture(PData.CurrentPartList["Organ"]["Left Leg"],c,{Pants = PData.HPClothes.Pants},PlayerName)
-											Function.PantsTexture(PData.CurrentPartList["Organ"]["Right Leg"],c,{Pants = PData.HPClothes.Pants},PlayerName)
-											Function.PantsTexture(PData.CurrentPartList["Organ"]["Left Butt"],c,{Pants = PData.HPClothes.Pants},PlayerName)
-											Function.PantsTexture(PData.CurrentPartList["Organ"]["Right Butt"],c,{Pants = PData.HPClothes.Pants},PlayerName)
-										end
+											Function.PantsTexture(PData.CurrentPartList["Organ"]["Torso"],chr,{Pants = PData.HPClothes.Pants},PlayerName)
+											Function.PantsTexture(PData.CurrentPartList["Organ"]["Left Leg"],chr,{Pants = PData.HPClothes.Pants},PlayerName)
+											Function.PantsTexture(PData.CurrentPartList["Organ"]["Right Leg"],chr,{Pants = PData.HPClothes.Pants},PlayerName)
+											Function.PantsTexture(PData.CurrentPartList["Organ"]["Left Butt"],chr,{Pants = PData.HPClothes.Pants},PlayerName)
+											Function.PantsTexture(PData.CurrentPartList["Organ"]["Right Butt"],chr,{Pants = PData.HPClothes.Pants},PlayerName)
+										end]]
 									end
 								elseif PData.BottomHP ~= "" and 
 									(PData.HardcoreHP == false and h.MaxHealth-h.Health < PData.BottomHP or
@@ -15787,14 +16062,14 @@ function RoClothes(Player)
 										PData.BottomRipped = false
 
 										if UIS.KeyboardEnabled then
-											local audio = Instance.new("Sound",c.PrimaryPart)
+											local audio = Instance.new("Sound",chr.PrimaryPart)
 											audio.SoundId = "rbxasset://RClothesContent/Sound/Heal/heal".. math.random(1,4) ..".mp3"
 											audio.Volume = 2.5*PData.Volume
 											audio:Play()
 											game:GetService("Debris"):AddItem(audio,3)
 										else
 											local sounds = {9113824422,9119138453,9113384209,9113824860}
-											local audio = Instance.new("Sound",c.PrimaryPart)
+											local audio = Instance.new("Sound",chr.PrimaryPart)
 											audio.SoundId = "rbxassetid://"..  sounds[math.random(1,#sounds)]
 											audio.Volume = 2.5*PData.Volume
 											audio:Play()
@@ -15802,7 +16077,7 @@ function RoClothes(Player)
 										end
 
 										if PData.HealParticles == true then
-											local particle = Instance.new("ParticleEmitter",c:FindFirstChild("HumanoidRootPart"))
+											local particle = Instance.new("ParticleEmitter",chr:FindFirstChild("HumanoidRootPart"))
 											particle.Enabled = false
 											particle.Texture = "rbxassetid://16291625893"
 											particle.LightEmission = 1
@@ -15829,7 +16104,58 @@ function RoClothes(Player)
 											game:GetService("Debris"):AddItem(particle,3)
 										end
 
-										if PData.CurrentPartList["Organ"]["Left Leg"]:FindFirstChildOfClass("SurfaceAppearance") then
+										for c, set in pairs(PData.ClothesHP) do
+											if not table.find(PData.CurrentClothes,c) then
+												continue
+											end
+											if set["HP"] == "BottomHP" then
+												if set["Inverse"] == true then
+													for i, v in pairs(Clothes[c].Weld) do
+														transparent(PData.CurrentPartList["Clothes"][v],1)
+													end
+													if Clothes[c].Unvisible then
+														for i, v in pairs(Clothes[c].Unvisible) do
+															if PData.CurrentPartList["Organ"][v] then
+																local t = PData.CurrentPartList["Organ"][v]:GetAttribute("Alpha") or 0
+																transparent(PData.CurrentPartList["Organ"][v],t)
+															end
+														end
+													end
+													if Clothes[c].HPFunction then
+														if typeof(Clothes[c].HPFunction) == "string" then
+															Function[Clothes[c].HPFunction](false,chr,PlayerName)
+														elseif typeof(Clothes[c].HPFunction) == "table" then
+															for i, v in pairs(Clothes[c].HPFunction) do
+																Function[v](false,chr,PlayerName)
+															end
+														end
+													end
+												else
+													for i, v in pairs(Clothes[c].Weld) do
+														local t = PData.CurrentPartList["Clothes"][v]:GetAttribute("Alpha") or 0
+														transparent(PData.CurrentPartList["Clothes"][v],t)
+													end
+													if Clothes[c].Unvisible then
+														for i, v in pairs(Clothes[c].Unvisible) do
+															if PData.CurrentPartList["Organ"][v] then
+																transparent(PData.CurrentPartList["Organ"][v],1)
+															end
+														end
+													end
+													if Clothes[c].HPFunction then
+														if typeof(Clothes[c].HPFunction) == "string" then
+															Function[Clothes[c].HPFunction](true,chr,PlayerName)
+														elseif typeof(Clothes[c].HPFunction) == "table" then
+															for i, v in pairs(Clothes[c].HPFunction) do
+																Function[v](true,chr,PlayerName)
+															end
+														end
+													end
+												end
+											end
+										end
+
+										--[[if PData.CurrentPartList["Organ"]["Left Leg"]:FindFirstChildOfClass("SurfaceAppearance") then
 											PData.CurrentPartList["Organ"]["Left Leg"]:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
 										end
 										if PData.CurrentPartList["Organ"]["Right Leg"]:FindFirstChildOfClass("SurfaceAppearance") then
@@ -15844,31 +16170,41 @@ function RoClothes(Player)
 										if PData.CurrentPartList["Organ"]["Torso"]:FindFirstChildOfClass("SurfaceAppearance") then
 											PData.CurrentPartList["Organ"]["Torso"]:FindFirstChildOfClass("SurfaceAppearance"):Destroy()
 										end
-										if c:FindFirstChildOfClass("Pants") then
-											Function.PantsTexture(PData.CurrentPartList["Organ"]["Torso"],c,{Pants = c:FindFirstChildOfClass("Pants")},PlayerName)
-											Function.PantsTexture(PData.CurrentPartList["Organ"]["Left Leg"],c,{Pants = c:FindFirstChildOfClass("Pants")},PlayerName)
-											Function.PantsTexture(PData.CurrentPartList["Organ"]["Right Leg"],c,{Pants = c:FindFirstChildOfClass("Pants")},PlayerName)
-											Function.PantsTexture(PData.CurrentPartList["Organ"]["Left Butt"],c,{Pants = c:FindFirstChildOfClass("Pants")},PlayerName)
-											Function.PantsTexture(PData.CurrentPartList["Organ"]["Right Butt"],c,{Pants = c:FindFirstChildOfClass("Pants")},PlayerName)
-										end
+										if chr:FindFirstChildOfClass("Pants") then
+											Function.PantsTexture(PData.CurrentPartList["Organ"]["Torso"],chr,{Pants = chr:FindFirstChildOfClass("Pants")},PlayerName)
+											Function.PantsTexture(PData.CurrentPartList["Organ"]["Left Leg"],chr,{Pants = chr:FindFirstChildOfClass("Pants")},PlayerName)
+											Function.PantsTexture(PData.CurrentPartList["Organ"]["Right Leg"],chr,{Pants = chr:FindFirstChildOfClass("Pants")},PlayerName)
+											Function.PantsTexture(PData.CurrentPartList["Organ"]["Left Butt"],chr,{Pants = chr:FindFirstChildOfClass("Pants")},PlayerName)
+											Function.PantsTexture(PData.CurrentPartList["Organ"]["Right Butt"],chr,{Pants = chr:FindFirstChildOfClass("Pants")},PlayerName)
+										end]]
 									end
 								end
 
-								if (PData.SavedPreviousHP-h.Health) >= 0 and PData.HardcoreHP == true then
-									PData.SavedTopHP -= (PData.SavedPreviousHP-h.Health)
-									PData.SavedBottomHP -= (PData.SavedPreviousHP-h.Health)
+								if (PData.SavedPreviousHP-h.Health) > 0 and PData.HardcoreHP == true then
+									PData.SavedTopHP = math.max(PData.SavedTopHP-(PData.SavedPreviousHP-h.Health),0)
+									PData.SavedBottomHP = math.max(PData.SavedBottomHP-(PData.SavedPreviousHP-h.Health),0)
+									if PData["Healing"] == true then
+										PData["Healing"] = false
+										GUIObject.repairDisplay.Color = ColorSequence.new(
+											{ColorSequenceKeypoint.new(0,Color3.new(1,0,0)),
+												ColorSequenceKeypoint.new(0.00001,Color3.new(0, 0, 0)),
+												ColorSequenceKeypoint.new(1,Color3.new(0, 0, 0))}
+										)
+										repairTween = TS:Create(GUIObject.repairBar,TweenInfo.new(1,Enum.EasingStyle.Sine,Enum.EasingDirection.In),{ImageTransparency=1})
+										repairTween:Play()
+									end
 								end
 								if PData.DamageSFX ~= "" and h.Health < PData.SavedPreviousHP then
 									if (PData.SavedPreviousHP-h.Health) >= PData.DamageSFX then
 										if UIS.KeyboardEnabled then
-											local audio = Instance.new("Sound",c.PrimaryPart)
-											audio.SoundId = "rbxasset://RClothesContent/Sound/Moan/".. math.random(1,14) ..".ogg"
+											local audio = Instance.new("Sound",chr.PrimaryPart)
+											audio.SoundId = "rbxasset://RClothesContent/Sound/Moan/".. math.random(1,8) ..".ogg"
 											audio.Volume = 1.5*PData.Volume
 											audio:Play()
 											game:GetService("Debris"):AddItem(audio,3)
 										else
 											local sounds = {4792913155,4792899013,4792904673,4792901644,4792915329,4792884617}
-											local audio = Instance.new("Sound",c.PrimaryPart)
+											local audio = Instance.new("Sound",chr.PrimaryPart)
 											audio.SoundId = "rbxassetid://".. sounds[math.random(1,#sounds)]
 											audio.Volume = 1.5*PData.Volume
 											audio:Play()
@@ -15877,6 +16213,25 @@ function RoClothes(Player)
 									end
 								end
 								PData.SavedPreviousHP = h.Health
+								if PData.HardcoreHP == true then
+									if PData.TopHP ~= "" then
+										GUIObject.topHPDisplay.Text = math.clamp(math.round((PData.SavedTopHP/PData.TopHP)*100),0,100).."%"
+										GUIObject.topHPDisplay.TextColor3 = Color3.new(1-PData.SavedTopHP/PData.TopHP,PData.SavedTopHP/PData.TopHP,0)
+									end
+									if PData.BottomHP ~= "" then 
+										GUIObject.bottomHPDisplay.Text = math.clamp(math.round((PData.SavedBottomHP/PData.BottomHP)*100),0,100).."%"
+										GUIObject.bottomHPDisplay.TextColor3 = Color3.new(1-PData.SavedBottomHP/PData.BottomHP,PData.SavedBottomHP/PData.BottomHP,0)
+									end
+								else
+									if PData.TopHP ~= "" then
+										GUIObject.topHPDisplay.Text = math.clamp(math.round((1-(h.MaxHealth-h.Health)/PData.TopHP)*100),0,100).."%"
+										GUIObject.topHPDisplay.TextColor3 = Color3.new(1-(1-(h.MaxHealth-h.Health)/PData.TopHP),(1-(h.MaxHealth-h.Health)/PData.TopHP),0)
+									end
+									if PData.BottomHP ~= "" then
+										GUIObject.bottomHPDisplay.Text = math.clamp(math.round((1-(h.MaxHealth-h.Health)/PData.BottomHP)*100),0,100).."%"
+										GUIObject.bottomHPDisplay.TextColor3 = Color3.new(1-(1-(h.MaxHealth-h.Health)/PData.BottomHP),(1-(h.MaxHealth-h.Health)/PData.BottomHP),0)
+									end
+								end
 							end
 						end
 					end
@@ -15953,7 +16308,15 @@ function RoClothes(Player)
 						Base = DataList.Character:FindFirstChild(Base.Name)
 					end
 					if Base and CFRAME and CFRAME1 and SIZE and Weld then
-						local XMultiply, YMultiply, ZMultiply = Function.MultiplyCalculate(Base.Size, BodyPartSize[Base.Name])
+						local BodySize = BodyPartSize[Base.Name]
+						if Base.Name == "Head" and Base:IsA("MeshPart") then
+							if Base:FindFirstChild("OriginalSize") then
+								BodySize = Base:FindFirstChild("OriginalSize").Value
+							else
+								BodySize = BodyPartSize["HeadMeshFix"]
+							end
+						end
+						local XMultiply, YMultiply, ZMultiply = Function.MultiplyCalculate(Base.Size, BodySize)
 
 						local CCFRAME = CFrame.new(CFRAME.Position.X * XMultiply, CFRAME.Position.Y * YMultiply, CFRAME.Position.Z * ZMultiply) * CFRAME.Rotation
 						local CCFRAME1 = CFrame.new(CFRAME1.Position.X * XMultiply, CFRAME1.Position.Y * YMultiply, CFRAME1.Position.Z * ZMultiply) * CFRAME1.Rotation
@@ -16178,6 +16541,34 @@ function RoClothes(Player)
 				end
 			end
 
+			for SpecialMesh, Property in pairs(DataList.CurrentPartList.RealtimeUpdateList.SpecialMesh) do
+				local Removed = false
+
+				if SpecialMesh.Parent == nil or Function.IsParentNil(SpecialMesh) or Function.FallenPartCheck(SpecialMesh) then
+					DataList.CurrentPartList.RealtimeUpdateList.SpecialMesh[SpecialMesh] = nil
+
+					Removed = true
+				end
+
+				if Removed == false then
+					local Base = Property.Base
+					local SIZE = Property.Size
+
+					if Method == 2 or Method == 3 then
+						Base = DataList.Character:FindFirstChild(Base.Name)
+					end
+					if Base and SIZE and SpecialMesh then
+						local XMultiply, YMultiply, ZMultiply = Function.MultiplyCalculate(Base.Size, BodyPartSize[Base.Name])
+
+						if DataList.MeshSizeLock == false then
+							if SpecialMesh.Scale ~= Vector3.new(SIZE.X * XMultiply, SIZE.Y * YMultiply, SIZE.Z * ZMultiply) then
+								SpecialMesh.Scale = Vector3.new(SIZE.X * XMultiply, SIZE.Y * YMultiply, SIZE.Z * ZMultiply)
+							end
+						end
+					end
+				end
+			end
+
 			for i, v in pairs(DataList.CurrentPartList.RealtimeUpdateList.Special) do
 				local Removed = false
 
@@ -16318,7 +16709,10 @@ function RoClothes(Player)
 
 				if Removed == false then
 					local T = Property.T.Transparency
-					local D = Property.Define
+					local D = Property.Define or 0
+					if Part:GetAttribute("MaxTransparenyRC") and D < Part:GetAttribute("MaxTransparenyRC") then
+						D = Part:GetAttribute("MaxTransparenyRC")
+					end
 
 					Part.LocalTransparencyModifier = math.clamp(Property.T.LocalTransparencyModifier,D,math.huge)
 					Part.Transparency = math.clamp(T,D,math.huge)
@@ -16462,6 +16856,12 @@ function RoClothes(Player)
 											0,
 											math.abs(OriginLookVector.Y)*math.clamp(frame.LookVector.Y,-math.huge,.35)
 										)
+									elseif Property.BreastsType == 5 then -- type2
+										Weld.C1 = CF1 * CFrame.Angles(
+											math.abs(OriginLookVector.Y)*math.clamp(frame.LookVector.Y,-math.huge,.35),
+											0,
+											frame.RightVector.Y
+										)
 									else -- default
 										Weld.C1 = CF1 * CFrame.Angles(
 											(frame.LookVector.Y*.2)+frame.RightVector.Y,
@@ -16485,6 +16885,12 @@ function RoClothes(Player)
 											(frame.LookVector.Y*.2)-frame.RightVector.Y,
 											0,
 											math.abs(OriginLookVector.Y)*math.clamp(frame.LookVector.Y,-math.huge,.35)
+										)
+									elseif Property.BreastsType == 5 then -- type5
+										Weld.C1 = CF1 * CFrame.Angles(
+											math.abs(OriginLookVector.Y)*math.clamp(frame.LookVector.Y,-math.huge,.35),
+											0,
+											frame.RightVector.Y
 										)
 									else -- default
 										Weld.C1 = CF1 * CFrame.Angles(
@@ -16878,6 +17284,7 @@ function RoClothes(Player)
 	--------------------------------------------------------------------------------------------------------------
 	]]
 
+	local HPButtons = {}
 	function Function.GUIFunc()
 		for _, Button in pairs(GUIObject.ButtonFrame:GetChildren()) do
 			if Button:FindFirstChildOfClass("TextButton") then
@@ -16890,6 +17297,102 @@ function RoClothes(Player)
 
 					local Page = GUIObject.PageFrame:WaitForChild(Button.Name)
 					Page.Visible = true
+					if Page.Name == "HP" then
+						for i, v in pairs(GUIObject.HPListFrame:GetChildren()) do
+							if not v:IsA("UIGridLayout") then
+								v:Destroy()
+							end
+						end
+						for i, v in pairs(HPButtons) do
+							v:Disconnect()
+							table.remove(AllConnect,table.find(AllConnect, v))
+						end
+						HPButtons = {}
+
+						for i, v in pairs(PlayerData[SelectPlayer].CurrentClothes) do
+							local button = Function.ButtonCreate(v, GUIObject.HPListFrame, false, {Color = Color3.new(1,1,1), Text = v.. ": nil"})
+							button:FindFirstChildOfClass("UIAspectRatioConstraint"):Destroy()
+							local b = button:FindFirstChildOfClass("TextButton")
+
+							local switch = PlayerData[SelectPlayer].ClothesHP[v] or 0
+							if switch ~= 0 then
+								if PlayerData[SelectPlayer].ClothesHP[v].HP == "TopHP" then
+									if PlayerData[SelectPlayer].ClothesHP[v].Inverse == true then
+										switch = 3
+										b.Text = v.. ": InverseTop"
+									else
+										switch = 1
+										b.Text = v.. ": TopHP"
+									end
+								elseif PlayerData[SelectPlayer].ClothesHP[v].HP == "BottomHP" then
+									if PlayerData[SelectPlayer].ClothesHP[v].Inverse == true then
+										switch = 4
+										b.Text = v.. ": InverseBottom"
+									else
+										switch = 2
+										b.Text = v.. ": BottomHP"
+									end
+								end
+							else
+								if switch == 0 then
+									b.Text = v.. ": nil"
+								else
+									b.Text = v.. ": "..switch
+									switch = 0
+								end
+							--[[else
+								if Clothes[v] then
+									switch = Clothes[v].HP
+									if Clothes[v].HP == 1 then
+										b.Text = v.. ": TopHP"
+										PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]="TopHP",["Inverse"]=false}
+									elseif Clothes[v].HP == 2 then
+										b.Text = v.. ": BottomHP"
+										PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]="BottomHP",["Inverse"]=false}
+									elseif Clothes[v].HP == 3 then
+										b.Text = v.. ": InverseTop"
+										PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]="TopHP",["Inverse"]=true}
+									elseif Clothes[v].HP == 4 then
+										b.Text = v.. ": InverseBottom"
+										PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]="BottomHP",["Inverse"]=true}
+									elseif not Clothes[v].HP or Clothes[v].HP == 0 then
+										b.Text = v.. ": nil"
+										PlayerData[SelectPlayer].ClothesHP[v] = nil
+									else
+										b.Text = v.. ": ".. Clothes[v].HP
+										PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]=Clothes[v].HP,["Inverse"]=false}
+									end
+								end]]
+							end
+							local changeConnect = button:FindFirstChildOfClass("TextButton").MouseButton1Click:Connect(function()
+								switch += 1 
+								if switch > 4 then
+									switch = 0
+								elseif switch < 0 then
+									switch = 4
+								end
+
+								if switch == 1 then
+									b.Text = v.. ": TopHP"
+									PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]="TopHP",["Inverse"]=false}
+								elseif switch == 2 then
+									b.Text = v.. ": BottomHP"
+									PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]="BottomHP",["Inverse"]=false}
+								elseif switch == 3 then
+									b.Text = v.. ": InverseTop"
+									PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]="TopHP",["Inverse"]=true}
+								elseif switch == 4 then
+									b.Text = v.. ": InverseBottom"
+									PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]="BottomHP",["Inverse"]=true}
+								else
+									b.Text = v.. ": nil"
+									PlayerData[SelectPlayer].ClothesHP[v] = nil
+								end
+							end)
+							table.insert(HPButtons,changeConnect)
+							table.insert(AllConnect,changeConnect)
+						end
+					end
 				end)
 			end
 		end
@@ -16901,6 +17404,16 @@ function RoClothes(Player)
 			end
 
 			local Page = GUIObject.PageFrame:WaitForChild(GUIObject.TailButton.Name)
+			Page.Visible = true
+		end)
+		GUIObject.optionsButton.MouseButton1Click:Connect(function()
+			for _, Page in pairs(GUIObject.PageFrame:GetChildren()) do
+				if Page:IsA("Frame") or Page:IsA("ScrollingFrame") then
+					Page.Visible = false
+				end
+			end
+
+			local Page = GUIObject.PageFrame:WaitForChild(GUIObject.optionsButton.Name)
 			Page.Visible = true
 		end)
 		local debounce = false
@@ -16929,7 +17442,7 @@ function RoClothes(Player)
 		end)
 
 		local DestroyConnect = GUIObject.DestroyButton.MouseButton1Click:Connect(function()
-			local BreakerInstance = Instance.new("BoolValue", game.workspace)
+			local BreakerInstance = Instance.new("BoolValue", workspace)
 			BreakerInstance.Name = "RoClothesBreaker"
 			game:GetService("Debris"):AddItem(BreakerInstance,2)
 		end)
@@ -17047,7 +17560,7 @@ function RoClothes(Player)
 			PlayerData[SelectPlayer].CatalogRemove = {}
 			if GUIObject.Catalog_3:FindFirstChild(SelectPlayer) then
 				for i, v in pairs(GUIObject.Catalog_3:FindFirstChild(SelectPlayer):GetChildren()) do
-					if not v:IsA("UIGridLayout") then
+					if not v:IsA("UIGridLayout") and not table.find(PlayerData[SelectPlayer].CatalogAccessory,tonumber(v.Name)) then
 						v:Destroy()
 					end
 				end
@@ -17306,7 +17819,7 @@ function RoClothes(Player)
 				PlayerData[SelectPlayer].CatalogRemove = {}
 				if GUIObject.Catalog_3:FindFirstChild(SelectPlayer) then
 					for i, v in pairs(GUIObject.Catalog_3:FindFirstChild(SelectPlayer):GetChildren()) do
-						if not v:IsA("UIGridLayout") then
+						if not v:IsA("UIGridLayout") and not table.find(PlayerData[SelectPlayer].CatalogAccessory,tonumber(v.Name)) then
 							v:Destroy()
 						end
 					end
@@ -17381,7 +17894,7 @@ function RoClothes(Player)
 
 					if GUIObject.Catalog_3:FindFirstChild(SelectPlayer) then
 						for i, v in pairs(GUIObject.Catalog_3:FindFirstChild(SelectPlayer):GetChildren()) do
-							if not v:IsA("UIGridLayout") then
+							if not v:IsA("UIGridLayout") and not table.find(PlayerData[SelectPlayer].CatalogAccessory,tonumber(v.Name)) then
 								v:Destroy()
 							end
 						end
@@ -17469,6 +17982,22 @@ function RoClothes(Player)
 				for i, v in pairs(v.Clothing) do
 					if not table.find(PlayerData[SelectPlayer].CurrentClothes, v) then
 						table.insert(PlayerData[SelectPlayer].CurrentClothes, v)
+					end
+
+					if Clothes[v] and Clothes[v]["HP"] then
+						if Clothes[v].HP == 1 then
+							PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]="TopHP",["Inverse"]=false}
+						elseif Clothes[v].HP == 2 then
+							PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]="BottomHP",["Inverse"]=false}
+						elseif Clothes[v].HP == 3 then
+							PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]="TopHP",["Inverse"]=true}
+						elseif Clothes[v].HP == 4 then
+							PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]="BottomHP",["Inverse"]=true}
+						elseif not Clothes[v].HP or Clothes[v].HP == 0 then
+							PlayerData[SelectPlayer].ClothesHP[v] = nil
+						else
+							PlayerData[SelectPlayer].ClothesHP[v] = {["HP"]=Clothes[v].HP,["Inverse"]=false}
+						end
 					end
 
 					for i, c in pairs(Clothes[v].Weld) do -- CHANGE here
@@ -17560,14 +18089,32 @@ function RoClothes(Player)
 				end
 			end
 
+			if v.MeshEdit then
+				for Name, Property in pairs(v.MeshEdit) do
+					for PropertyName, v in pairs(Property) do
+						if PropertyName == "CockScale" then
+							PlayerData[SelectPlayer].CockScale = v
+						else
+							PlayerData[SelectPlayer]["PartList"][Name][PropertyName] = v
+						end
+					end
+				end
+			end
+
+			if v.HPClothes then
+				for name, v in pairs(v.HPClothes) do
+					PlayerData[SelectPlayer]["ClothesHP"][name] = v
+				end
+			end
+
 		end
 
 		for i, v in pairs(Bundle) do
 			local BButton = Function.ButtonCreate(i, GUIObject.BundlesButtonFrame)
 			if v.ClothingBundle and v.ClothingBundle == true then
-				BButton.BackgroundColor3 = Color3.fromRGB(49, 0, 109)
+				BButton.BackgroundColor3 = Color3.fromRGB(90, 38, 0)
 			elseif v.IsPreset == true then
-				BButton.BackgroundColor3 = Color3.fromRGB(170, 51, 106)
+				BButton.BackgroundColor3 = Color3.fromRGB(25, 84, 0)
 			end
 
 			if i ~= "nil" and i ~= "Bald" then
@@ -17581,20 +18128,36 @@ function RoClothes(Player)
 			end
 
 			local BBConnect = BButton:FindFirstChildOfClass("TextButton").MouseButton1Click:Connect(function()
-				if BButton.Name == "nil" and PlayerData[SelectPlayer].CurrentBundle == "nil" then
-					Function.CharacterReset(SelectPlayer)
-					PlayerData[SelectPlayer] = Function.PlayerDataDefault()
+				if DetectingBundle == false then
+					if BButton.Name == "nil" and PlayerData[SelectPlayer].CurrentBundle == "nil" then
+						Function.CharacterReset(SelectPlayer)
+						PlayerData[SelectPlayer] = Function.PlayerDataDefault()
+						for i, v in pairs(GUIObject.RecolorListFrame:GetChildren()) do
+							if v:IsA("TextButton") then
+								v:Destroy()
+							end
+						end
 
-					task.delay(0,function()
-						BButton:FindFirstChildOfClass("TextButton").Text = "CLEARED"
-					end)
+						task.delay(0,function()
+							BButton:FindFirstChildOfClass("TextButton").Text = "CLEARED"
+						end)
+					end
+
+					if (not v.ClothingBundle or v.ClothingBundle == false) and (not v.IsPreset or v.IsPreset == false) then
+						PlayerData[SelectPlayer].CurrentBundle = BButton.Name
+					end
+
+					checkBundle(v)
+				else
+					DetectingBundle = false
+					GUIObject.Bundles.Visible = false
+					GUIObject.optionsFrame.Visible = true
+					if BButton.Name == "nil" then
+						loadupBundle = ""
+					else
+						loadupBundle = BButton.Name
+					end
 				end
-
-				if (not v.ClothingBundle or v.ClothingBundle == false) and (not v.IsPreset or v.IsPreset == false) then
-					PlayerData[SelectPlayer].CurrentBundle = BButton.Name
-				end
-
-				checkBundle(v)
 
 				Function.GUIUpdate()
 			end)
@@ -17602,8 +18165,11 @@ function RoClothes(Player)
 			table.insert(AllConnect, BBConnect)
 		end
 
-		if loadupBundle ~= nil then
+		if loadupBundle ~= nil and Bundle[loadupBundle] then
+			PlayerData[Player.Name].CurrentBundle = loadupBundle
 			checkBundle(Bundle[loadupBundle])
+		elseif loadupBundle ~= nil and loadupBundle ~= "" then
+			warn('No bundle named "'.. loadupBundle ..'" was found!')
 		end
 
 		for i, v in pairs(Clothes) do
@@ -17687,6 +18253,22 @@ function RoClothes(Player)
 									table.insert(RecolorButtons[CButton.Name],tertiaryChangeConnect)
 									table.insert(AllConnect,tertiaryChangeConnect)
 								end
+							end
+						end
+
+						if Clothes[CButton.Name]["HP"] then
+							if Clothes[CButton.Name].HP == 1 then
+								PlayerData[SelectPlayer].ClothesHP[CButton.Name] = {["HP"]="TopHP",["Inverse"]=false}
+							elseif Clothes[CButton.Name].HP == 2 then
+								PlayerData[SelectPlayer].ClothesHP[CButton.Name] = {["HP"]="BottomHP",["Inverse"]=false}
+							elseif Clothes[CButton.Name].HP == 3 then
+								PlayerData[SelectPlayer].ClothesHP[CButton.Name] = {["HP"]="TopHP",["Inverse"]=true}
+							elseif Clothes[CButton.Name].HP == 4 then
+								PlayerData[SelectPlayer].ClothesHP[CButton.Name] = {["HP"]="BottomHP",["Inverse"]=true}
+							elseif not Clothes[CButton.Name].HP or Clothes[CButton.Name].HP == 0 then
+								PlayerData[SelectPlayer].ClothesHP[CButton.Name] = nil
+							else
+								PlayerData[SelectPlayer].ClothesHP[CButton.Name] = {["HP"]=Clothes[CButton.Name].HP,["Inverse"]=false}
 							end
 						end
 
@@ -17864,6 +18446,358 @@ function RoClothes(Player)
 			Function.GUIUpdate()
 		end)
 
+		local loadupClosedConnect = GUIObject.closeOptionButton.MouseButton1Click:Connect(function()
+			loadupClosed = not loadupClosed
+
+			Function.GUIUpdate()
+		end)
+
+		local loadupExecuteConnect = GUIObject.executeOptionButton.MouseButton1Click:Connect(function()
+			loadupExecute = not loadupExecute
+
+			Function.GUIUpdate()
+		end)
+
+		local loadupFPersonConnect = GUIObject.FPersonLoadupButton.MouseButton1Click:Connect(function()
+			loadupFPerson += 1
+
+			if loadupFPerson > maxFPersonMethod then
+				loadupFPerson = 0
+			end
+			Function.GUIUpdate()
+		end)
+
+		local loadupFPersonConnect2 = GUIObject.FPersonLoadupButton.MouseButton2Click:Connect(function()
+			loadupFPerson -= 1
+
+			if loadupFPerson < 0 then
+				loadupFPerson = maxFPersonMethod
+			end
+			Function.GUIUpdate()
+		end)
+
+		local loadupBundleConnect = GUIObject.bundleLoadButton.MouseButton1Click:Connect(function()
+			DetectingBundle = true
+			GUIObject.Bundles.Visible = true
+			GUIObject.optionsFrame.Visible = false
+
+			task.spawn(function()
+				repeat task.wait() until DetectingBundle == false or GUIObject.Bundles.Visible == false
+				DetectingBundle = false
+				Function.GUIUpdate()
+			end)
+		end)
+		--[[local loadupBundleConnect = GUIObject.bundleLoadBox:GetPropertyChangedSignal("Text"):Connect(function()
+			local Text = GUIObject.bundleLoadBox.Text
+
+			if Bundle[Text] then
+				GUIObject.bundleLoadBox.TextColor3 = Color3.new(1, 1, 1)
+				loadupBundle = Text
+			else
+				GUIObject.bundleLoadBox.TextColor3 = Color3.new(1, 0, 0)
+				loadupBundle = Text
+			end
+			Function.GUIUpdate()
+		end)
+		
+		local loadupBundleEnterConnect = GUIObject.bundleLoadBox.FocusLost:Connect(function()
+			local Text = GUIObject.bundleLoadBox.Text
+			
+			if Bundle[Text] then
+				GUIObject.bundleLoadBox.TextColor3 = Color3.new(1, 1, 1)
+			else
+				if Text ~= "" then
+					for i, v in pairs(Bundle) do
+						if string.find(string.lower(i), string.lower(Text)) then
+							loadupBundle = i
+							GUIObject.bundleLoadBox.Text = i
+							GUIObject.bundleLoadBox.TextColor3 = Color3.new(1, 1, 1)
+							break
+						end
+					end
+				end
+
+				if not Bundle[loadupBundle] then
+					GUIObject.bundleLoadBox.TextColor3 = Color3.new(1,0,0)
+					loadupBundle = ""
+				end
+			end
+			Function.GUIUpdate()
+		end)]]
+
+		local debounce = false
+		local saveConnect = GUIObject.saveButton.MouseButton1Click:Connect(function()
+			if debounce == false then
+				debounce = true
+				local saveData = {
+					loadupClosed = loadupClosed,
+					loadupExecute = loadupExecute,
+					loadupFPerson = loadupFPerson,
+					loadupBundle = loadupBundle,
+					KEYBIND = KEYBIND,
+					hpKEYBIND = hpKEYBIND,
+					dpKEYBIND = dpKEYBIND,
+				}
+				local success, err = pcall(function()
+					for i, v in pairs(saveData) do
+						saveData[i] = Function.convertToJSON(v)
+					end
+
+					local encrypt = HS:JSONEncode(saveData)
+					if env.writefile then
+						env.writefile("RClothesLerp/Settings.json", encrypt)
+					end
+
+
+				end)
+				if success then
+					print("Saved RC")
+					GUIObject.saveButton.Text = "Saved"
+					task.delay(1,function()
+						GUIObject.saveButton.Text = "Save"
+						debounce = false
+					end)
+				else
+					warn("Failed to save RC: ".. err)
+					GUIObject.saveButton.Text = "FAILED!"
+					task.delay(1,function()
+						GUIObject.saveButton.Text = "Save"
+						debounce = false
+					end)
+				end
+			end
+		end)
+
+		local debounce = false
+		local importConnect = GUIObject.importBundleBox.FocusLost:Connect(function()
+			local Text = GUIObject.importBundleBox.Text
+			if Text ~= "" then
+				if debounce == false then
+					debounce = true
+					local success, ouput = pcall(function()
+						return loadstring(Text)()
+					end)
+					if success then
+						local allBundlesSuccess = true
+						local s, ouput = pcall(function()
+							for name, input in pairs(ouput) do
+								-- error checker --
+								local invalidBundle = false
+								local function bWarn(reason)
+									if invalidBundle == false then
+										invalidBundle = true
+										warn("----------------------------------------------------------")
+									end
+									warn(reason)
+								end
+								if input["Clothing"] then
+									for i, v in pairs(input["Clothing"]) do
+										if not Clothes[v] then
+											bWarn(name.. ": Could not find "..tostring(v).." as Clothing.")
+										end
+									end
+								end
+								if input["Recolor"] then
+									for i, v in pairs(input["Recolor"]) do
+										if Clothes[i] then
+											for cType, color in pairs(v) do
+												if cType ~= "Primary" and cType ~= "Secondary" and cType ~= "Tertiary" then
+													bWarn(name.. ": "..tostring(cType).." is not a valid color type.")
+												end
+											end
+										else
+											bWarn(name.. ": Recolor could not find "..tostring(i).." as Clothing.")
+										end
+									end
+								end
+								if input["MeshEdit"] then
+									for i, v in pairs(input["MeshEdit"]) do
+										if Function.PartListDefault()[i] then
+											for property, value in pairs(v) do
+												if not MetaClothes.__index[property] then
+													bWarn(name.. ": "..tostring(property).." is not a valid property.")
+												end
+											end
+										else
+											bWarn(name.. ": MeshEdit does not register "..tostring(i).." as a valid part.")
+										end
+									end
+								end
+								if input["HPClothes"] then
+									for i, v in pairs(input["HPClothes"]) do
+										if Clothes[i] then
+											for property, value in pairs(v) do
+												if property ~= "HP" and property ~= "Inverse" then
+													bWarn(name.. ": "..tostring(property).." isn't registered. Make sure to use HP or Inverse only.")
+												elseif property == "HP" and value ~= "TopHP" and value ~= "BottomHP" then
+													print("No such thing as "..tostring(value).." for HP. Layered HP is not supported yet! This function will be treated as nil.")
+												end
+											end
+										else
+											bWarn(name.. ": HPClothes could not find "..tostring(i).." as Clothing.")
+										end
+									end
+								end
+								
+								if invalidBundle == true then
+									allBundlesSuccess = false
+									warn("⚠️ Bundle "..name.." has been aborted! ⚠️")
+									continue
+								end
+								Bundle[name] = input
+								
+								if GUIObject.BundlesButtonFrame:FindFirstChild(name) then
+									GUIObject.BundlesButtonFrame:FindFirstChild(name):Destroy()
+								end
+								local BButton = Function.ButtonCreate(name, GUIObject.BundlesButtonFrame)
+								if input.ClothingBundle and input.ClothingBundle == true then
+									BButton.BackgroundColor3 = Color3.fromRGB(90, 38, 0)
+								elseif input.IsPreset == true then
+									BButton.BackgroundColor3 = Color3.fromRGB(25, 84, 0)
+								end
+								table.insert(BundleButtons, BButton)
+								local BBConnect = BButton:FindFirstChildOfClass("TextButton").MouseButton1Click:Connect(function()
+									if DetectingBundle == false then
+										if (not input.ClothingBundle or input.ClothingBundle == false) and (not input.IsPreset or input.IsPreset == false) then
+											PlayerData[SelectPlayer].CurrentBundle = BButton.Name
+										end
+
+										checkBundle(input)
+
+										Function.GUIUpdate()
+									else
+										DetectingBundle = false
+										GUIObject.Bundles.Visible = false
+										GUIObject.optionsFrame.Visible = true
+										if BButton.Name == "nil" then
+											loadupBundle = ""
+										else
+											loadupBundle = BButton.Name
+										end
+									end
+
+								end)
+								table.insert(AllConnect, BBConnect)
+								table.sort(BundleButtons, function(a,b)
+									return a.Name:lower() < b.Name:lower()
+								end)
+								table.sort(ClothesButtons, function(a,b)
+									return a.Name < b.Name
+								end)
+								for i, v in pairs(BundleButtons) do
+									local extraorder = 0
+									if Bundle[v.Name].ClothingBundle and Bundle[v.Name].ClothingBundle == true then
+										extraorder = -999
+									elseif Bundle[v.Name].IsPreset and Bundle[v.Name].IsPreset == true then
+										extraorder = -999999
+									end
+									v.LayoutOrder = i+extraorder
+								end
+								for i, v in pairs(ClothesButtons) do
+									v.LayoutOrder = i
+								end
+
+								if env.writefile then
+									local t = {}
+									local function transferTable(n,isTable)
+										local newTable = {}
+										for i, v in pairs(n) do
+											if isTable then
+												if typeof(v) == "table" then
+													newTable[i] = transferTable(v,true)
+												else
+													newTable[i] = v
+												end
+											else
+												if typeof(v) == "table" then
+													t[i] = transferTable(v,true)
+												else
+													t[i] = v
+												end
+											end
+										end
+										return newTable
+									end
+									transferTable(input)
+									local function convertTable(inp)
+										for i, v in pairs(inp) do
+											if typeof(v) == "table" then
+												convertTable(v)
+											else
+												inp[i] = Function.convertToJSON(v)
+											end
+										end
+									end
+									convertTable(t)
+									t["BundleName"] = name
+									local function sanitize(str)
+										for _, char in ipairs({"/", "<", ">", "?", "*", "|", "\ ","\\",'"', ":"}) do
+											str = string.gsub(str, char, "_")
+										end
+										return str
+									end
+									local fileConvertedName = sanitize(name)
+									env.writefile("RClothesLerp/Bundles/"..fileConvertedName..".json", HS:JSONEncode(t))
+
+									task.spawn(function() -- recompile overtime --
+										local filesFound = env.listfiles("RClothesLerp/Bundles")
+										local t = {}
+										for i, v in pairs(filesFound) do
+											if env.isfile(v) then
+												local b = HS:JSONDecode(env.readfile(v))
+												local storedName = b.BundleName
+												b["BundleName"] = nil
+
+												local function fromJSON(t)
+													for i, v in pairs(t) do
+														local value,original = Function.convertFromJSON(v)
+														t[i] = value
+														if typeof(v) == "table" and original then
+															fromJSON(v)
+														end
+													end
+												end
+												fromJSON(b)
+
+												t[storedName] = b
+											end
+										end
+										local function toJSON(t)
+											for i, v in pairs(t) do
+												if typeof(v) == "table" then
+													toJSON(v)
+												else
+													t[i] = Function.convertToJSON(v)
+												end
+											end
+										end
+										toJSON(t)
+										env.writefile("RClothesLerp/BundleLoader.json", HS:JSONEncode(t))
+									end)
+
+								end
+							end
+						end)
+						if s then
+							if allBundlesSuccess then
+								GUIObject.importBundleBox.Text = "Bundle(s) were imported!"
+							else
+								GUIObject.importBundleBox.Text = "Errors were found. Check Developer Console for list of errors."
+							end
+						else
+							GUIObject.importBundleBox.Text = ouput
+						end
+					else
+						warn(ouput)
+					end
+					task.wait(1)
+					debounce = false
+				else
+					GUIObject.importBundleBox.Text = "Please wait before importing again!"
+				end
+			end
+		end)
+
 		table.insert(AllConnect, ExecuteConnect)
 		table.insert(AllConnect, ResetConnect)
 		table.insert(AllConnect, DelayTimeConnect)
@@ -17907,6 +18841,14 @@ function RoClothes(Player)
 		table.insert(AllConnect, HardcoreToggleConnect)
 		table.insert(AllConnect, GravityConnect)
 		table.insert(AllConnect, TailPhysicsToggleConnect)
+		table.insert(AllConnect, loadupClosedConnect)
+		table.insert(AllConnect, loadupExecuteConnect)
+		table.insert(AllConnect, loadupFPersonConnect)
+		table.insert(AllConnect, loadupFPersonConnect2)
+		table.insert(AllConnect, loadupBundleConnect)
+		--table.insert(AllConnect, loadupBundleEnterConnect)
+		table.insert(AllConnect, saveConnect)
+		table.insert(AllConnect, importConnect)
 	end
 
 	Function.UIStrokeCreate(GUIObject.PageFrame)
@@ -17969,13 +18911,20 @@ function RoClothes(Player)
 	Function.UIStrokeCreate(GUIObject.BodyTransparencyFrame)
 	Function.UIStrokeCreate(GUIObject.HardcoreFrame)
 	Function.UIStrokeCreate(GUIObject.tailToggleFrame)
+	Function.UIStrokeCreate(GUIObject.optionsframeButton)
+	Function.UIStrokeCreate(GUIObject.saveFrame)
+	Function.UIStrokeCreate(GUIObject.closeOption)
+	Function.UIStrokeCreate(GUIObject.executeOption)
+	Function.UIStrokeCreate(GUIObject.bundleLoad)
+	Function.UIStrokeCreate(GUIObject.FPersonLoadup)
+	Function.UIStrokeCreate(GUIObject.importBundle)
 
 	--Properties:
 
 	GUIObject.Screen.Name = "RoClothes"
 	GUIObject.Screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	GUIObject.Screen.ResetOnSpawn = false
-	GUIObject.Screen.Enabled = true
+	GUIObject.Screen.Enabled = false
 
 	GUIObject.MobileCloseButtonScreen.Name = "RoClothesCloseButton"
 	GUIObject.MobileCloseButtonScreen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -18024,7 +18973,7 @@ function RoClothes(Player)
 	GUIObject.PageFrame.Position = UDim2.new(0,0,0)
 	GUIObject.PageFrame.Size = UDim2.new(1,0,1,0)
 
-	GUIObject.UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(168,136,255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 192, 211))}
+	GUIObject.UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(160, 32, 240)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(95, 112, 224))}
 	GUIObject.UIGradient.Rotation = -90
 	GUIObject.UIGradient.Parent = GUIObject.PageFrame
 
@@ -18041,12 +18990,12 @@ function RoClothes(Player)
 	GUIObject.ClothesSearch.Name = "ClothesSearch"
 	GUIObject.ClothesSearch.Parent = GUIObject.Clothes_3
 	GUIObject.ClothesSearch.AnchorPoint = Vector2.new(0.5, 0)
-	GUIObject.ClothesSearch.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.ClothesSearch.BackgroundColor3 = Color3.fromRGB(6, 0, 76)
 	GUIObject.ClothesSearch.BorderColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.ClothesSearch.Position = UDim2.new(0.5, 0, 1.02, 0)
 	GUIObject.ClothesSearch.Size = UDim2.new(.9, 0, 0.0646399707, 0)
 
-	GUIObject.UIGradient_34.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 192, 211)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(168,136,255))}
+	GUIObject.UIGradient_34.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(48, 48, 48)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 255, 255))}
 	GUIObject.UIGradient_34.Rotation = -90
 	GUIObject.UIGradient_34.Parent = GUIObject.ClothesSearch
 
@@ -18091,15 +19040,15 @@ function RoClothes(Player)
 	GUIObject.Menu.Size = UDim2.new(1, 0, 1, 0)
 
 	GUIObject.DestroyFrame.Name = "DestroyFrame"
-	GUIObject.DestroyFrame.Parent = GUIObject.Menu
+	GUIObject.DestroyFrame.Parent = GUIObject.optionsFrame
 	GUIObject.DestroyFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.DestroyFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	GUIObject.DestroyFrame.Position = UDim2.new(0.784810185, 0, 0.875, 0)
+	GUIObject.DestroyFrame.Position = UDim2.new(0.05, 0, 0.875, 0)
 	GUIObject.DestroyFrame.Size = UDim2.new(0.18244803, 0, 0.128480643, 0)
 
 	GUIObject.UIAspectRatioConstraint_2.Parent = GUIObject.DestroyFrame
 
-	GUIObject.UIGradient_3.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(77, 0, 0)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(150, 0, 0))}
+	GUIObject.UIGradient_3.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(27, 0, 0)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 0, 0))}
 	GUIObject.UIGradient_3.Rotation = -90
 	GUIObject.UIGradient_3.Parent = GUIObject.DestroyFrame
 
@@ -18108,15 +19057,15 @@ function RoClothes(Player)
 
 	GUIObject.DestroyButton.Name = "DestroyButton"
 	GUIObject.DestroyButton.Parent = GUIObject.DestroyFrame
-	GUIObject.DestroyButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	GUIObject.DestroyButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.DestroyButton.BackgroundTransparency = 1.000
 	GUIObject.DestroyButton.Size = UDim2.new(1, 0, 1, 0)
 	GUIObject.DestroyButton.Font = Enum.Font.Code
-	GUIObject.DestroyButton.Text = "KILL!!"
-	GUIObject.DestroyButton.TextColor3 = Color3.fromRGB(155, 0, 0)
+	GUIObject.DestroyButton.Text = "DESTROY"
+	GUIObject.DestroyButton.TextColor3 = Color3.fromRGB(255, 0, 0)
 	GUIObject.DestroyButton.TextScaled = true
 	GUIObject.DestroyButton.TextSize = 14.000
-	GUIObject.DestroyButton.TextStrokeColor3 = Color3.fromRGB(255, 0, 0)
+	GUIObject.DestroyButton.TextStrokeColor3 = Color3.fromRGB(104, 0, 0)
 	GUIObject.DestroyButton.TextStrokeTransparency = 0.000
 	GUIObject.DestroyButton.TextWrapped = true
 
@@ -18128,7 +19077,7 @@ function RoClothes(Player)
 	GUIObject.PlayerFrame.Position = UDim2.new(0.5, 0, 0.025, 0)
 	GUIObject.PlayerFrame.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
 
-	GUIObject.UIGradient_4.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(219,146,198)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(78, 17, 90))}
+	GUIObject.UIGradient_4.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(54, 0, 54)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 0, 100))}
 	GUIObject.UIGradient_4.Rotation = -90
 	GUIObject.UIGradient_4.Parent = GUIObject.PlayerFrame
 
@@ -18158,7 +19107,7 @@ function RoClothes(Player)
 	GUIObject.BreastsTypeFrame.Position = UDim2.new(0.5, 0, 0.195, 0)
 	GUIObject.BreastsTypeFrame.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
 
-	GUIObject.UIGradient_5.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(240,136,255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(145, 17, 90))}
+	GUIObject.UIGradient_5.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 49, 54)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 83, 100))}
 	GUIObject.UIGradient_5.Rotation = -90
 	GUIObject.UIGradient_5.Parent = GUIObject.BreastsTypeFrame
 
@@ -18181,12 +19130,12 @@ function RoClothes(Player)
 	GUIObject.BundleSearch.Name = "BundleSearch"
 	GUIObject.BundleSearch.Parent = GUIObject.Bundles
 	GUIObject.BundleSearch.AnchorPoint = Vector2.new(0.5, 0)
-	GUIObject.BundleSearch.BackgroundColor3 = Color3.fromRGB(48, 25, 52)
+	GUIObject.BundleSearch.BackgroundColor3 = Color3.fromRGB(6, 0, 76)
 	GUIObject.BundleSearch.BorderColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.BundleSearch.Position = UDim2.new(0.5, 0, 1.02, 0)
 	GUIObject.BundleSearch.Size = UDim2.new(.9, 0, 0.0646399707, 0)
 
-	GUIObject.UIGradient_A17.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 192, 211)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(145, 17, 90))}
+	GUIObject.UIGradient_A17.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(48, 48, 48)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 255, 255))}
 	GUIObject.UIGradient_A17.Rotation = -90
 	GUIObject.UIGradient_A17.Parent = GUIObject.BundleSearch
 
@@ -18213,7 +19162,7 @@ function RoClothes(Player)
 	GUIObject.BundleFrame.Position = UDim2.new(0.5, 0, 0.11, 0)
 	GUIObject.BundleFrame.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
 
-	GUIObject.UIGradient_6.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(240,136,255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(145, 17, 90))}
+	GUIObject.UIGradient_6.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(30, 0, 54)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(55, 0, 100))}
 	GUIObject.UIGradient_6.Rotation = -90
 	GUIObject.UIGradient_6.Parent = GUIObject.BundleFrame
 
@@ -18241,7 +19190,7 @@ function RoClothes(Player)
 	GUIObject.DelayFrame.Position = UDim2.new(0.5, 0, 0.535, 0)
 	GUIObject.DelayFrame.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
 
-	GUIObject.UIGradient_7.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(80, 203, 240)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(119, 221, 119))}
+	GUIObject.UIGradient_7.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 54, 45)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 100, 67))}
 	GUIObject.UIGradient_7.Rotation = -90
 	GUIObject.UIGradient_7.Parent = GUIObject.DelayFrame
 
@@ -18272,7 +19221,7 @@ function RoClothes(Player)
 	GUIObject.UICorner_8.CornerRadius = UDim.new(0.25, 0)
 	GUIObject.UICorner_8.Parent = GUIObject.AutoExecuteFrame
 
-	GUIObject.UIGradient_8.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(40, 101, 120)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(78, 221, 78))}
+	GUIObject.UIGradient_8.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 54, 45)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 100, 67))}
 	GUIObject.UIGradient_8.Rotation = -90
 	GUIObject.UIGradient_8.Parent = GUIObject.AutoExecuteFrame
 
@@ -18300,7 +19249,7 @@ function RoClothes(Player)
 	GUIObject.BundleBodyColorFrame.Position = UDim2.new(0.5, 0, 0.365, 0)
 	GUIObject.BundleBodyColorFrame.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
 
-	GUIObject.UIGradient_15.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(80, 203, 240)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(119, 221, 119))}
+	GUIObject.UIGradient_15.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 49, 54)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 83, 100))}
 	GUIObject.UIGradient_15.Rotation = -90
 	GUIObject.UIGradient_15.Parent = GUIObject.BundleBodyColorFrame
 
@@ -18334,7 +19283,7 @@ function RoClothes(Player)
 	GUIObject.UICorner_9.CornerRadius = UDim.new(0.25, 0)
 	GUIObject.UICorner_9.Parent = GUIObject.ResetFrame
 
-	GUIObject.UIGradient_9.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(254, 0, 90)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 0, 0))}
+	GUIObject.UIGradient_9.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(54, 0, 0)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 0, 0))}
 	GUIObject.UIGradient_9.Rotation = -90
 	GUIObject.UIGradient_9.Parent = GUIObject.ResetFrame
 
@@ -18364,7 +19313,7 @@ function RoClothes(Player)
 	GUIObject.UICorner_10.CornerRadius = UDim.new(0.25, 0)
 	GUIObject.UICorner_10.Parent = GUIObject.ExecuteFrame
 
-	GUIObject.UIGradient_10.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(254, 0, 90)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 0, 0))}
+	GUIObject.UIGradient_10.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(54, 0, 0)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 0, 0))}
 	GUIObject.UIGradient_10.Rotation = -90
 	GUIObject.UIGradient_10.Parent = GUIObject.ExecuteFrame
 
@@ -18391,7 +19340,7 @@ function RoClothes(Player)
 	GUIObject.ToneFrame.Position = UDim2.new(0.5, 0, 0.28, 0)
 	GUIObject.ToneFrame.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
 
-	GUIObject.UIGradient_11.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(80, 203, 240)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(119, 221, 119))}
+	GUIObject.UIGradient_11.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 49, 54)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 83, 100))}
 	GUIObject.UIGradient_11.Rotation = -90
 	GUIObject.UIGradient_11.Parent = GUIObject.ToneFrame
 
@@ -18400,7 +19349,7 @@ function RoClothes(Player)
 
 	GUIObject.ToneButton.Name = "ToneButton"
 	GUIObject.ToneButton.Parent = GUIObject.ToneFrame
-	GUIObject.ToneButton.BackgroundColor3 = Color3.fromRGB(255, 209, 220)
+	GUIObject.ToneButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 	GUIObject.ToneButton.BackgroundTransparency = 1.000
 	GUIObject.ToneButton.BorderSizePixel = 0
 	GUIObject.ToneButton.LayoutOrder = 1
@@ -18410,7 +19359,7 @@ function RoClothes(Player)
 	GUIObject.ToneButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.ToneButton.TextScaled = true
 	GUIObject.ToneButton.TextSize = 14.000
-	GUIObject.ToneButton.TextStrokeColor3 = Color3.fromRGB(1, 91, 61)
+	GUIObject.ToneButton.TextStrokeColor3 = Color3.fromRGB(57, 57, 57)
 	GUIObject.ToneButton.TextWrapped = true
 
 	GUIObject.Bundles.Name = "Bundles"
@@ -18454,8 +19403,8 @@ function RoClothes(Player)
 
 	GUIObject.Menu_2.Name = "Menu"
 	GUIObject.Menu_2.Parent = GUIObject.ButtonFrame
-	GUIObject.Menu_2.BackgroundColor3 = Color3.fromRGB(255, 209, 220)
-	GUIObject.Menu_2.BorderColor3 = Color3.fromRGB(255, 209, 220)
+	GUIObject.Menu_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.Menu_2.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	GUIObject.Menu_2.Position = UDim2.new(0.784810185, 0, 0.866666734, 0)
 	GUIObject.Menu_2.Size = UDim2.new(1, 0, 1, 0)
 
@@ -18466,7 +19415,7 @@ function RoClothes(Player)
 
 	GUIObject.MenuButton.Name = "MenuButton"
 	GUIObject.MenuButton.Parent = GUIObject.Menu_2
-	GUIObject.MenuButton.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+	GUIObject.MenuButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.MenuButton.BackgroundTransparency = 1.000
 	GUIObject.MenuButton.Size = UDim2.new(1, 0, 1, 0)
 	GUIObject.MenuButton.Font = Enum.Font.Code
@@ -18477,14 +19426,14 @@ function RoClothes(Player)
 	GUIObject.MenuButton.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.MenuButton.TextWrapped = true
 
-	GUIObject.UIGradient_12.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(168,136,255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 192, 211))}
+	GUIObject.UIGradient_12.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(27, 27, 27)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 50, 50))}
 	GUIObject.UIGradient_12.Rotation = -90
 	GUIObject.UIGradient_12.Parent = GUIObject.Menu_2
 
 	GUIObject.Menu2_2.Name = "Menu2"
 	GUIObject.Menu2_2.Parent = GUIObject.ButtonFrame
-	GUIObject.Menu2_2.BackgroundColor3 = Color3.fromRGB(255, 209, 220)
-	GUIObject.Menu2_2.BorderColor3 = Color3.fromRGB(255, 209, 220)
+	GUIObject.Menu2_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.Menu2_2.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	GUIObject.Menu2_2.Position = UDim2.new(0.784810185, 0, 0.866666734, 0)
 	GUIObject.Menu2_2.Size = UDim2.new(1, 0, 1, 0)
 
@@ -18506,7 +19455,7 @@ function RoClothes(Player)
 	GUIObject.Menu2Button.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.Menu2Button.TextWrapped = true
 
-	GUIObject.UIGradient_19.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(168,136,255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 192, 211))}
+	GUIObject.UIGradient_19.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(27, 27, 27)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 50, 50))}
 	GUIObject.UIGradient_19.Rotation = -90
 	GUIObject.UIGradient_19.Parent = GUIObject.Menu2_2
 
@@ -18535,7 +19484,7 @@ function RoClothes(Player)
 	GUIObject.Menu3Button.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.Menu3Button.TextWrapped = true
 
-	GUIObject.M3UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(168,136,255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 192, 211))}
+	GUIObject.M3UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(27, 27, 27)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 50, 50))}
 	GUIObject.M3UIGradient.Rotation = -90
 	GUIObject.M3UIGradient.Parent = GUIObject.Menu3_3
 
@@ -18564,7 +19513,7 @@ function RoClothes(Player)
 	GUIObject.ClothesButton.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.ClothesButton.TextWrapped = true
 
-	GUIObject.UIGradient_13.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(168,136,255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 192, 211))}
+	GUIObject.UIGradient_13.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(27, 27, 27)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 50, 50))}
 	GUIObject.UIGradient_13.Rotation = -90
 	GUIObject.UIGradient_13.Parent = GUIObject.Clothes_2
 
@@ -18593,7 +19542,7 @@ function RoClothes(Player)
 	GUIObject.BundlesButton.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.BundlesButton.TextWrapped = true
 
-	GUIObject.UIGradient_14.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(168,136,255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 192, 211))}
+	GUIObject.UIGradient_14.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(27, 27, 27)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 50, 50))}
 	GUIObject.UIGradient_14.Rotation = -90
 	GUIObject.UIGradient_14.Parent = GUIObject.Bundles_2
 
@@ -18634,13 +19583,13 @@ function RoClothes(Player)
 	GUIObject.VersionText.TextXAlignment = Enum.TextXAlignment.Left
 
 	GUIObject.KeybindFrame.Name = "KeybindFrame"
-	GUIObject.KeybindFrame.Parent = GUIObject.Menu
+	GUIObject.KeybindFrame.Parent = GUIObject.optionsFrame
 	GUIObject.KeybindFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.KeybindFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	GUIObject.KeybindFrame.Position = UDim2.new(0.0542876273, 0, 0.931, 0)
-	GUIObject.KeybindFrame.Size = UDim2.new(0.684944391, 0, 0.0538139641, 0)
+	GUIObject.KeybindFrame.Position = UDim2.new(0.28, 0, 0.89, 0)
+	GUIObject.KeybindFrame.Size = UDim2.new(0.684944391, 0, 0.0646399707, 0)
 
-	GUIObject.UIGradient_16.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(253, 253, 150)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 47, 0))}
+	GUIObject.UIGradient_16.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(26, 27, 0)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 47, 0))}
 	GUIObject.UIGradient_16.Rotation = -90
 	GUIObject.UIGradient_16.Parent = GUIObject.KeybindFrame
 
@@ -18653,7 +19602,7 @@ function RoClothes(Player)
 	GUIObject.KeybindButton.BackgroundTransparency = 1.000
 	GUIObject.KeybindButton.Size = UDim2.new(1, 0, 1, 0)
 	GUIObject.KeybindButton.Font = Enum.Font.Code
-	GUIObject.KeybindButton.Text = "Keybind"
+	GUIObject.KeybindButton.Text = "Insert"
 	GUIObject.KeybindButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.KeybindButton.TextScaled = true
 	GUIObject.KeybindButton.TextSize = 14.000
@@ -18668,7 +19617,7 @@ function RoClothes(Player)
 	GUIObject.FaceFrame.Position = UDim2.new(0.5, 0, 0.449999988, 0)
 	GUIObject.FaceFrame.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
 
-	GUIObject.UIGradient_17.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(80, 203, 240)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(119, 221, 119))}
+	GUIObject.UIGradient_17.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 49, 54)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 83, 100))}
 	GUIObject.UIGradient_17.Rotation = -90
 	GUIObject.UIGradient_17.Parent = GUIObject.FaceFrame
 
@@ -18941,10 +19890,10 @@ function RoClothes(Player)
 	GUIObject.MethodFrame.Parent = GUIObject.Menu
 	GUIObject.MethodFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.MethodFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	GUIObject.MethodFrame.Position = UDim2.new(0.0542876273, 0, 0.865, 0)
-	GUIObject.MethodFrame.Size = UDim2.new(0.684944391, 0, 0.0538139641, 0)
+	GUIObject.MethodFrame.Position = UDim2.new(0.0542876273, 0, 0.89, 0)
+	GUIObject.MethodFrame.Size = UDim2.new(0.684944391, 0, 0.0646399707, 0)
 
-	GUIObject.UIGradient_24.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(253, 253, 150)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 47, 0))}
+	GUIObject.UIGradient_24.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(26, 27, 0)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 47, 0))}
 	GUIObject.UIGradient_24.Rotation = -90
 	GUIObject.UIGradient_24.Parent = GUIObject.MethodFrame
 
@@ -18989,7 +19938,7 @@ function RoClothes(Player)
 	GUIObject.CatalogButton.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.CatalogButton.TextWrapped = true
 
-	GUIObject.UIGradient_33.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(168,136,255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 192, 211))}
+	GUIObject.UIGradient_33.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(27, 27, 27)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 50, 50))}
 	GUIObject.UIGradient_33.Rotation = -90
 	GUIObject.UIGradient_33.Parent = GUIObject.Catalog_2
 
@@ -19018,7 +19967,7 @@ function RoClothes(Player)
 	GUIObject.EditButton.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.EditButton.TextWrapped = true
 
-	GUIObject.UIGradient_32.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(168,136,255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 192, 211))}
+	GUIObject.UIGradient_32.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(27, 27, 27)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 50, 50))}
 	GUIObject.UIGradient_32.Rotation = -90
 	GUIObject.UIGradient_32.Parent = GUIObject.Edit_2
 
@@ -19766,7 +20715,7 @@ function RoClothes(Player)
 	GUIObject.HPButton.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.HPButton.TextWrapped = true
 
-	GUIObject.UIGradient_A3.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(168,136,255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 192, 211))}
+	GUIObject.UIGradient_A3.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(27, 27, 27)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 50, 50))}
 	GUIObject.UIGradient_A3.Rotation = -90
 	GUIObject.UIGradient_A3.Parent = GUIObject.HP
 
@@ -19956,8 +20905,8 @@ function RoClothes(Player)
 	GUIObject.TPFrame.AnchorPoint = Vector2.new(0.5, 0)
 	GUIObject.TPFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.TPFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	GUIObject.TPFrame.Position = UDim2.new(0.5, 0, 0.535, 0)
-	GUIObject.TPFrame.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
+	GUIObject.TPFrame.Position = UDim2.new(0.271, 0, 0.535, 0)
+	GUIObject.TPFrame.Size = UDim2.new(0.425, 0, 0.0646399707, 0)
 
 	GUIObject.UIGradient_A12.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(54, 36, 0)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 70, 0))}
 	GUIObject.UIGradient_A12.Rotation = -90
@@ -19974,7 +20923,7 @@ function RoClothes(Player)
 	GUIObject.TPToggle.LayoutOrder = 1
 	GUIObject.TPToggle.Size = UDim2.new(1, 0, 1, 0)
 	GUIObject.TPToggle.Font = Enum.Font.Code
-	GUIObject.TPToggle.Text = "Toggle Tear Particles"
+	GUIObject.TPToggle.Text = "Tear Particles"
 	GUIObject.TPToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.TPToggle.TextScaled = true
 	GUIObject.TPToggle.TextSize = 14.000
@@ -19987,8 +20936,8 @@ function RoClothes(Player)
 	GUIObject.PHFrame.AnchorPoint = Vector2.new(0.5, 0)
 	GUIObject.PHFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.PHFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	GUIObject.PHFrame.Position = UDim2.new(0.5, 0, 0.62, 0)
-	GUIObject.PHFrame.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
+	GUIObject.PHFrame.Position = UDim2.new(0.731, 0, 0.535, 0)
+	GUIObject.PHFrame.Size = UDim2.new(0.425, 0, 0.0646399707, 0)
 
 	GUIObject.UIGradient_A13.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(54, 36, 0)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 70, 0))}
 	GUIObject.UIGradient_A13.Rotation = -90
@@ -20005,7 +20954,7 @@ function RoClothes(Player)
 	GUIObject.PHToggle.LayoutOrder = 1
 	GUIObject.PHToggle.Size = UDim2.new(1, 0, 1, 0)
 	GUIObject.PHToggle.Font = Enum.Font.Code
-	GUIObject.PHToggle.Text = "Toggle Heal Particles"
+	GUIObject.PHToggle.Text = "Heal Particles"
 	GUIObject.PHToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.PHToggle.TextScaled = true
 	GUIObject.PHToggle.TextSize = 14.000
@@ -20038,7 +20987,7 @@ function RoClothes(Player)
 	GUIObject.RecolorButton.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.RecolorButton.TextWrapped = true
 
-	GUIObject.UIGradient_A14.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(168,136,255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 192, 211))}
+	GUIObject.UIGradient_A14.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(27, 27, 27)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 50, 50))}
 	GUIObject.UIGradient_A14.Rotation = -90
 	GUIObject.UIGradient_A14.Parent = GUIObject.Recolor
 
@@ -20108,7 +21057,7 @@ function RoClothes(Player)
 	GUIObject.HardcoreFrame.AnchorPoint = Vector2.new(0.5, 0)
 	GUIObject.HardcoreFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	GUIObject.HardcoreFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	GUIObject.HardcoreFrame.Position = UDim2.new(0.5, 0, 0.705, 0)
+	GUIObject.HardcoreFrame.Position = UDim2.new(0.5, 0, 0.62, 0)
 	GUIObject.HardcoreFrame.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
 
 	GUIObject.UIGradient_A19.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(38, 10, 10)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(63, 19, 19))}
@@ -20133,6 +21082,53 @@ function RoClothes(Player)
 	GUIObject.HardcoreToggle.TextStrokeColor3 = Color3.fromRGB(0, 255, 0)
 	GUIObject.HardcoreToggle.TextStrokeTransparency = 0.000
 	GUIObject.HardcoreToggle.TextWrapped = true
+
+	GUIObject.hardcoreUI.Parent = GUIObject.Screen
+	GUIObject.hardcoreUI.IgnoreGuiInset = true
+	GUIObject.hardcoreUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	GUIObject.hardcoreUI.Name = "HealthUI"
+
+	GUIObject.hardcoreGroup.Parent = GUIObject.hardcoreUI
+	GUIObject.hardcoreGroup.BackgroundTransparency = 1
+	GUIObject.hardcoreGroup.AnchorPoint = Vector2.new(0.5,0.5)
+	GUIObject.hardcoreGroup.Size = UDim2.new(0.1,0,0.1,0)
+	GUIObject.hardcoreGroup.GroupTransparency = 1
+	GUIObject.hardcoreGroup.Visible = false
+	local aspectRatio = Instance.new("UIAspectRatioConstraint",GUIObject.hardcoreGroup)
+
+	GUIObject.repairBar.Parent = GUIObject.hardcoreGroup
+	GUIObject.repairBar.AnchorPoint = Vector2.new(0.5,0.5)
+	GUIObject.repairBar.Position = UDim2.new(0.5,0,0.5,0)
+	GUIObject.repairBar.BackgroundTransparency = 1
+	GUIObject.repairBar.Size = UDim2.new(.5,0,.5,0)
+	GUIObject.repairBar.Image = "rbxassetid://2866648598"
+	GUIObject.repairBar.ImageTransparency = .2
+	GUIObject.repairBar.Visible = false
+	GUIObject.repairDisplay.Parent = GUIObject.repairBar
+	GUIObject.repairDisplay.Color = ColorSequence.new(
+		{ColorSequenceKeypoint.new(0,Color3.new(1,1,1)),
+			ColorSequenceKeypoint.new(0.00001,Color3.new(0, 0, 0)),
+			ColorSequenceKeypoint.new(1,Color3.new(0, 0, 0))}
+	)
+
+	local uiStroke = Instance.new("UIStroke",GUIObject.topHPDisplay)
+	GUIObject.topHPDisplay.Parent = GUIObject.hardcoreGroup
+	GUIObject.topHPDisplay.BackgroundTransparency = 1
+	GUIObject.topHPDisplay.Size = UDim2.new(1,0,0.25,0)
+	GUIObject.topHPDisplay.TextScaled = true
+	GUIObject.topHPDisplay.Font = Enum.Font.Sarpanch
+	GUIObject.topHPDisplay.TextColor3 = Color3.new(0,1,0)
+	GUIObject.topHPDisplay.Text = ""
+
+	local uiStroke = Instance.new("UIStroke",GUIObject.bottomHPDisplay)
+	GUIObject.bottomHPDisplay.Parent = GUIObject.hardcoreGroup
+	GUIObject.bottomHPDisplay.BackgroundTransparency = 1
+	GUIObject.bottomHPDisplay.Position = UDim2.fromScale(0,.75)
+	GUIObject.bottomHPDisplay.Size = UDim2.new(1,0,0.25,0)
+	GUIObject.bottomHPDisplay.TextScaled = true
+	GUIObject.bottomHPDisplay.Font = Enum.Font.Sarpanch
+	GUIObject.bottomHPDisplay.TextColor3 = Color3.new(0,1,0)
+	GUIObject.bottomHPDisplay.Text = ""
 
 
 	GUIObject.TailButton.Name = "Tail"
@@ -20181,6 +21177,239 @@ function RoClothes(Player)
 	GUIObject.tailToggleButton.TextStrokeColor3 = Color3.fromRGB(0, 255, 0)
 	GUIObject.tailToggleButton.TextStrokeTransparency = 0.000
 	GUIObject.tailToggleButton.TextWrapped = true
+
+
+	GUIObject.optionsframeButton.Name = "OptionsFrame"
+	GUIObject.optionsframeButton.Parent = GUIObject.Menu
+	GUIObject.optionsframeButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.optionsframeButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+	GUIObject.optionsframeButton.Position = UDim2.new(0.784810185, 0, 0.875, 0)
+	GUIObject.optionsframeButton.Size = UDim2.new(0.18244803, 0, 0.128480643, 0)
+	local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint",GUIObject.optionsframeButton)
+	local UIGradient = Instance.new("UIGradient",GUIObject.optionsframeButton)
+	local UICorner = Instance.new("UICorner",GUIObject.optionsframeButton)
+	UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 14, 27)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 27, 50))}
+	UIGradient.Rotation = -90
+	UICorner.CornerRadius = UDim.new(0.25, 0)
+
+	GUIObject.optionsButton.Name = "Options"
+	GUIObject.optionsButton.Parent = GUIObject.optionsframeButton
+	GUIObject.optionsButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.optionsButton.BackgroundTransparency = 1.000
+	GUIObject.optionsButton.Size = UDim2.new(1, 0, 1, 0)
+	GUIObject.optionsButton.Font = Enum.Font.Code
+	GUIObject.optionsButton.Text = "Options"
+	GUIObject.optionsButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.optionsButton.TextScaled = true
+	GUIObject.optionsButton.TextSize = 14.000
+	GUIObject.optionsButton.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.optionsButton.TextStrokeTransparency = 1.000
+	GUIObject.optionsButton.TextWrapped = true
+
+	GUIObject.optionsFrame.Name = "Options"
+	GUIObject.optionsFrame.Parent = GUIObject.PageFrame
+	GUIObject.optionsFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.optionsFrame.BackgroundTransparency = 1.000
+	GUIObject.optionsFrame.Size = UDim2.new(1, 0, 1, 0)
+	GUIObject.optionsFrame.Visible = false
+
+	GUIObject.saveFrame.Name = "saveFrame"
+	GUIObject.saveFrame.Parent = GUIObject.optionsFrame
+	GUIObject.saveFrame.AnchorPoint = Vector2.new(0.5, 0)
+	GUIObject.saveFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.saveFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+	GUIObject.saveFrame.Position = UDim2.new(0.5, 0, 0.025, 0)
+	GUIObject.saveFrame.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
+	local UIGradient = Instance.new("UIGradient",GUIObject.saveFrame)
+	local UICorner = Instance.new("UICorner",GUIObject.saveFrame)
+	UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 50, 0)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 100, 0))}
+	UIGradient.Rotation = -90
+	UICorner.CornerRadius = UDim.new(0.25, 0)
+
+	GUIObject.saveButton.Name = "saveButton"
+	GUIObject.saveButton.Parent = GUIObject.saveFrame
+	GUIObject.saveButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.saveButton.BackgroundTransparency = 1.000
+	GUIObject.saveButton.Size = UDim2.new(1, 0, 1, 0)
+	GUIObject.saveButton.Font = Enum.Font.Code
+	GUIObject.saveButton.Text = "Save"
+	GUIObject.saveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.saveButton.TextScaled = true
+	GUIObject.saveButton.TextSize = 14.000
+	GUIObject.saveButton.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.saveButton.TextStrokeTransparency = 1.000
+	GUIObject.saveButton.TextWrapped = true
+
+	GUIObject.closeOption.Name = "CloseOptionFrame"
+	GUIObject.closeOption.Parent = GUIObject.optionsFrame
+	GUIObject.closeOption.AnchorPoint = Vector2.new(0.5, 0)
+	GUIObject.closeOption.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.closeOption.BorderColor3 = Color3.fromRGB(0, 0, 0)
+	GUIObject.closeOption.Position = UDim2.new(0.5, 0, 0.11, 0)
+	GUIObject.closeOption.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
+	local UIGradient = Instance.new("UIGradient",GUIObject.closeOption)
+	local UICorner = Instance.new("UICorner",GUIObject.closeOption)
+	UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(53, 15, 0)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(121, 48, 0))}
+	UIGradient.Rotation = -90
+	UICorner.CornerRadius = UDim.new(0.25, 0)
+
+	GUIObject.closeOptionButton.Name = "CloseOption"
+	GUIObject.closeOptionButton.Parent = GUIObject.closeOption
+	GUIObject.closeOptionButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.closeOptionButton.BackgroundTransparency = 1.000
+	GUIObject.closeOptionButton.Size = UDim2.new(1, 0, 1, 0)
+	GUIObject.closeOptionButton.Font = Enum.Font.Code
+	GUIObject.closeOptionButton.Text = "Close UI on Loadup"
+	GUIObject.closeOptionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.closeOptionButton.TextScaled = true
+	GUIObject.closeOptionButton.TextSize = 14.000
+	GUIObject.closeOptionButton.TextStrokeColor3 = Color3.fromRGB(255, 0, 0)
+	GUIObject.closeOptionButton.TextStrokeTransparency = 0.000
+	GUIObject.closeOptionButton.TextWrapped = true
+
+	GUIObject.executeOption.Name = "ExecuteOptionFrame"
+	GUIObject.executeOption.Parent = GUIObject.optionsFrame
+	GUIObject.executeOption.AnchorPoint = Vector2.new(0.5, 0)
+	GUIObject.executeOption.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.executeOption.BorderColor3 = Color3.fromRGB(0, 0, 0)
+	GUIObject.executeOption.Position = UDim2.new(0.5, 0, 0.195, 0)
+	GUIObject.executeOption.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
+	local UIGradient = Instance.new("UIGradient",GUIObject.executeOption)
+	local UICorner = Instance.new("UICorner",GUIObject.executeOption)
+	UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(53, 15, 0)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(121, 48, 0))}
+	UIGradient.Rotation = -90
+	UICorner.CornerRadius = UDim.new(0.25, 0)
+
+	GUIObject.executeOptionButton.Name = "ExecuteOption"
+	GUIObject.executeOptionButton.Parent = GUIObject.executeOption
+	GUIObject.executeOptionButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.executeOptionButton.BackgroundTransparency = 1.000
+	GUIObject.executeOptionButton.Size = UDim2.new(1, 0, 1, 0)
+	GUIObject.executeOptionButton.Font = Enum.Font.Code
+	GUIObject.executeOptionButton.Text = "Execute on Loadup"
+	GUIObject.executeOptionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.executeOptionButton.TextScaled = true
+	GUIObject.executeOptionButton.TextSize = 14.000
+	GUIObject.executeOptionButton.TextStrokeColor3 = Color3.fromRGB(255, 0, 0)
+	GUIObject.executeOptionButton.TextStrokeTransparency = 0.000
+	GUIObject.executeOptionButton.TextWrapped = true
+
+	GUIObject.FPersonLoadup.Name = "FPersonLoadFrame"
+	GUIObject.FPersonLoadup.Parent = GUIObject.optionsFrame
+	GUIObject.FPersonLoadup.AnchorPoint = Vector2.new(0.5, 0)
+	GUIObject.FPersonLoadup.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.FPersonLoadup.BorderColor3 = Color3.fromRGB(0, 0, 0)
+	GUIObject.FPersonLoadup.Position = UDim2.new(0.5, 0, 0.28, 0)
+	GUIObject.FPersonLoadup.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
+	local UIGradient = Instance.new("UIGradient",GUIObject.FPersonLoadup)
+	local UICorner = Instance.new("UICorner",GUIObject.FPersonLoadup)
+	UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(53, 15, 0)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(121, 48, 0))}
+	UIGradient.Rotation = -90
+	UICorner.CornerRadius = UDim.new(0.25, 0)
+
+	GUIObject.FPersonLoadupButton.Name = "FPersonLoad"
+	GUIObject.FPersonLoadupButton.Parent = GUIObject.FPersonLoadup
+	GUIObject.FPersonLoadupButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.FPersonLoadupButton.BackgroundTransparency = 1.000
+	GUIObject.FPersonLoadupButton.Size = UDim2.new(1, 0, 1, 0)
+	GUIObject.FPersonLoadupButton.Font = Enum.Font.Code
+	GUIObject.FPersonLoadupButton.Text = "FPerson Loadup: false"
+	GUIObject.FPersonLoadupButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.FPersonLoadupButton.TextScaled = true
+	GUIObject.FPersonLoadupButton.TextSize = 14.000
+	GUIObject.FPersonLoadupButton.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.FPersonLoadupButton.TextStrokeTransparency = 1.000
+	GUIObject.FPersonLoadupButton.TextWrapped = true
+
+	GUIObject.bundleLoad.Name = "loadupBundleFrame"
+	GUIObject.bundleLoad.Parent = GUIObject.optionsFrame
+	GUIObject.bundleLoad.AnchorPoint = Vector2.new(0.5, 0)
+	GUIObject.bundleLoad.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.bundleLoad.BorderColor3 = Color3.fromRGB(0, 0, 0)
+	GUIObject.bundleLoad.Position = UDim2.new(0.5, 0, 0.365, 0)
+	GUIObject.bundleLoad.Size = UDim2.new(0.891309202, 0, 0.0646399707, 0)
+	local UIGradient = Instance.new("UIGradient",GUIObject.bundleLoad)
+	local UICorner = Instance.new("UICorner",GUIObject.bundleLoad)
+	UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(53, 15, 0)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(121, 48, 0))}
+	UIGradient.Rotation = -90
+	UICorner.CornerRadius = UDim.new(0.25, 0)
+
+	GUIObject.bundleLoadButton.Name = "loadupBundle"
+	GUIObject.bundleLoadButton.Parent = GUIObject.bundleLoad
+	GUIObject.bundleLoadButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+	GUIObject.bundleLoadButton.BackgroundTransparency = 1.000
+	GUIObject.bundleLoadButton.Size = UDim2.new(1, 0, 1, 0)
+	GUIObject.bundleLoadButton.Font = Enum.Font.Code
+	GUIObject.bundleLoadButton.Text = "Loadup Bundle: nil"
+	GUIObject.bundleLoadButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.bundleLoadButton.TextScaled = true
+	GUIObject.bundleLoadButton.TextSize = 14.000
+	GUIObject.bundleLoadButton.TextWrapped = true
+	--[[GUIObject.bundleLoadBox.Name = "loadupBundle"
+	GUIObject.bundleLoadBox.ClearTextOnFocus = true
+	GUIObject.bundleLoadBox.Parent = GUIObject.bundleLoad
+	GUIObject.bundleLoadBox.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+	GUIObject.bundleLoadBox.BackgroundTransparency = 1.000
+	GUIObject.bundleLoadBox.Size = UDim2.new(1, 0, 1, 0)
+	GUIObject.bundleLoadBox.Font = Enum.Font.Code
+	GUIObject.bundleLoadBox.PlaceholderText = "Auto Bundle on Loadup"
+	GUIObject.bundleLoadBox.Text = ""
+	GUIObject.bundleLoadBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.bundleLoadBox.TextScaled = true
+	GUIObject.bundleLoadBox.TextSize = 14.000
+	GUIObject.bundleLoadBox.TextWrapped = true]]
+
+	GUIObject.importBundle.Name = "importBundleFrame"
+	GUIObject.importBundle.Parent = GUIObject.optionsFrame
+	GUIObject.importBundle.AnchorPoint = Vector2.new(0.5, 0)
+	GUIObject.importBundle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.importBundle.BorderColor3 = Color3.fromRGB(0, 0, 0)
+	GUIObject.importBundle.Position = UDim2.new(0.5, 0, 0.45, 0)
+	GUIObject.importBundle.Size = UDim2.new(0.891309202, 0, 0.4, 0)
+	local UIGradient = Instance.new("UIGradient",GUIObject.importBundle)
+	local UICorner = Instance.new("UICorner",GUIObject.importBundle)
+	UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 21, 53)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 36, 121))}
+	UIGradient.Rotation = -90
+	UICorner.CornerRadius = UDim.new(0.1, 0)
+
+	GUIObject.importBundleBox.Name = "importBundle"
+	GUIObject.importBundleBox.ClearTextOnFocus = true
+	GUIObject.importBundleBox.Parent = GUIObject.importBundle
+	GUIObject.importBundleBox.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+	GUIObject.importBundleBox.BackgroundTransparency = 1.000
+	GUIObject.importBundleBox.Size = UDim2.new(1, 0, 1, 0)
+	GUIObject.importBundleBox.Font = Enum.Font.Code
+	GUIObject.importBundleBox.PlaceholderText = "Import Bundle"
+	GUIObject.importBundleBox.Text = ""
+	GUIObject.importBundleBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	GUIObject.importBundleBox.TextScaled = true
+	GUIObject.importBundleBox.TextSize = 14.000
+	GUIObject.importBundleBox.TextWrapped = true
+	local UITextSizeConstraint = Instance.new("UITextSizeConstraint",GUIObject.importBundleBox)
+	UITextSizeConstraint.MaxTextSize = 30
+
+	GUIObject.HPListFrame.Name = "HPListFrame"
+	GUIObject.HPListFrame.Parent = GUIObject.HPFrame
+	GUIObject.HPListFrame.Active = true
+	GUIObject.HPListFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	GUIObject.HPListFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	GUIObject.HPListFrame.BackgroundTransparency = 1.000
+	GUIObject.HPListFrame.BorderSizePixel = 0
+	GUIObject.HPListFrame.Position = UDim2.new(0.5, 0, 0.85, 0)
+	GUIObject.HPListFrame.Size = UDim2.new(0.95, 0, 0.3, 0)
+	GUIObject.HPListFrame.BottomImage = "rbxassetid://5946093983"
+	GUIObject.HPListFrame.CanvasSize = UDim2.new(0, 0, 0.5, 0)
+	GUIObject.HPListFrame.MidImage = ""
+	GUIObject.HPListFrame.ScrollBarThickness = 0
+	GUIObject.HPListFrame.CanvasSize = UDim2.new(0, 0, 0.5, 0)
+	GUIObject.HPListFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	GUIObject.HPListFrame.TopImage = "rbxassetid://5946093983"
+
+	local UIGridLayout = Instance.new("UIGridLayout",GUIObject.HPListFrame)
+	UIGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	UIGridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	UIGridLayout.CellPadding = UDim2.new(0,0,.02,0)
+	UIGridLayout.CellSize = UDim2.new(.98, 0, 0.33, 0)
 
 
 	if not UIS.KeyboardEnabled then
@@ -20241,9 +21470,8 @@ function RoClothes(Player)
 
 	local BREAKER = Instance.new("BoolValue")
 	BREAKER.Name = "RoClothesBreaker"
-	BREAKER.Parent = game.workspace
+	BREAKER.Parent = workspace
 
-	GUIObject.Screen.Enabled = false
 	local loadui = Instance.new("ScreenGui",game:GetService("CoreGui"))
 	loadui.Enabled = true
 	local oload = Instance.new("ImageLabel",loadui)
@@ -20252,7 +21480,7 @@ function RoClothes(Player)
 	oload.Transparency = 1
 	oload.ImageTransparency = .999
 	local load = Instance.new("ImageLabel",loadui)
-	load.Image = "rbxasset://RClothesContent/loadv8.png"
+	load.Image = "rbxasset://RClothesContent/loadv9.png"
 	load.Size = UDim2.new(1,0,1,0)
 	load.Transparency = 1
 	load.ImageTransparency = .999
@@ -20278,7 +21506,7 @@ function RoClothes(Player)
 		GUIObject.Screen.Enabled = false
 		local BREAKER = Instance.new("BoolValue")
 		BREAKER.Name = "RoClothesBreaker"
-		BREAKER.Parent = game.workspace
+		BREAKER.Parent = workspace
 		if oload.IsLoaded == true then
 			local txt = Instance.new("TextLabel",loadui)
 			txt.BackgroundTransparency = 1
@@ -20299,6 +21527,23 @@ function RoClothes(Player)
 			warn("FILES ARE NOT LOADED CORRECTLY")
 		end
 	else
+		if loadupFPerson > 0 then
+			PlayerData[Player.Name].FPerson = true
+			if loadupFPerson >= 3 then
+				PlayerData[Player.Name].FPsnap = true
+			end
+			if loadupFPerson == 1 or loadupFPerson == 3 then
+				PlayerData[Player.Name].LocalTransparency = {
+					["Head"] = false,
+					["Right Arm"] = true,
+					["Left Arm"] = true,
+					["Torso"] = true,
+					["Right Leg"] = true,
+					["Left Leg"] = true,
+					["Hat"] = true
+				}
+			end
+		end
 		if loadupClosed == false then
 			GUIObject.Screen.Enabled = true
 		end
@@ -20326,7 +21571,7 @@ function RoClothes(Player)
 				GUIObject.Screen:Destroy()
 				GUIObject.MobileCloseButtonScreen:Destroy()
 				BreakerObject:Destroy()
-				print("goodbye!")
+				print("RoCDC")
 				break
 			end
 		end
